@@ -553,14 +553,17 @@ static rbCollisionShape *rigidbody_validate_sim_shape_helper(RigidBodyWorld *rbw
     case RB_SHAPE_COMPOUND:
       new_shape = RB_shape_new_compound(radius);
       rbCollisionShape *childShape = NULL;
+      float loc[3], rot[4];
+      float mat[4][4];
       // Add children to the compound shape
       // TODO: Don't iterate through all physics objects to get children
       FOREACH_COLLECTION_OBJECT_RECURSIVE_BEGIN (rbw->group, childObject) {
         if (childObject->parent == ob) {
           childShape = rigidbody_validate_sim_shape_helper(rbw, childObject);
           if (childShape) {
-            RB_compound_add_child_shape(
-                new_shape, childShape, childObject->loc, childObject->dquat);
+            BKE_object_matrix_local_get(childObject, mat);
+            mat4_to_loc_quat(loc, rot, mat);
+            RB_compound_add_child_shape(new_shape, childShape, loc, rot);
           }
         }
       }
