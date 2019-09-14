@@ -573,6 +573,9 @@ static rbCollisionShape *rigidbody_validate_sim_shape_helper(RigidBodyWorld *rbw
   if (new_shape == NULL) {
     new_shape = RB_shape_new_box(size[0], size[1], size[2]);
   }
+  if (new_shape) {
+    RB_shape_set_margin(new_shape, RBO_GET_MARGIN(rbo));
+  }
 
   return new_shape;
 }
@@ -609,7 +612,6 @@ static void rigidbody_validate_sim_shape(RigidBodyWorld *rbw, Object *ob, bool r
       RB_shape_delete(rbo->shared->physics_shape);
     }
     rbo->shared->physics_shape = new_shape;
-    RB_shape_set_margin(rbo->shared->physics_shape, RBO_GET_MARGIN(rbo));
   }
 }
 
