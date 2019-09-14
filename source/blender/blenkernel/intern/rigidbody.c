@@ -555,7 +555,7 @@ static rbCollisionShape *rigidbody_validate_sim_shape_helper(RigidBodyWorld *rbw
       rbCollisionShape *childShape = NULL;
       float loc[3], rot[4];
       float mat[4][4];
-      // Add children to the compound shape
+      /* Add children to the compound shape */
       // TODO: Don't iterate through all physics objects to get children
       FOREACH_COLLECTION_OBJECT_RECURSIVE_BEGIN (rbw->group, childObject) {
         if (childObject->parent == ob) {
@@ -846,10 +846,7 @@ static void rigidbody_validate_sim_object(RigidBodyWorld *rbw, Object *ob, bool 
                                 rbo->flag & RBO_FLAG_KINEMATIC || rbo->flag & RBO_FLAG_DISABLED);
   }
 
-  // (Re)Add rigid body to world. But only if its parent is not a compound type
-  if (rbw && rbw->shared->physics_world &&
-      (ob->parent == NULL || ob->parent->rigidbody_object == NULL ||
-       ob->parent->rigidbody_object->shape != RB_SHAPE_COMPOUND)) {
+  if (rbw && rbw->shared->physics_world && rbo->shared->physics_object) {
     RB_dworld_add_body(rbw->shared->physics_world, rbo->shared->physics_object, rbo->col_groups);
   }
 }
@@ -1588,7 +1585,7 @@ static void rigidbody_update_ob_array(RigidBodyWorld *rbw)
   int n = 0;
   FOREACH_COLLECTION_OBJECT_RECURSIVE_BEGIN (rbw->group, object) {
     (void)object;
-    // Check if object is the direct child of an object with a compound shape
+    /* Ignore if this object is the direct child of an object with a compound shape */
     if (object->parent == NULL || object->parent->rigidbody_object == NULL ||
         object->parent->rigidbody_object->shape != RB_SHAPE_COMPOUND) {
       n++;
@@ -1603,7 +1600,7 @@ static void rigidbody_update_ob_array(RigidBodyWorld *rbw)
 
   int i = 0;
   FOREACH_COLLECTION_OBJECT_RECURSIVE_BEGIN (rbw->group, object) {
-    // Check if object is the direct child of an object with a compound shape
+    /* Ignore if this object is the direct child of an object with a compound shape */
     if (object->parent == NULL || object->parent->rigidbody_object == NULL ||
         object->parent->rigidbody_object->shape != RB_SHAPE_COMPOUND) {
       rbw->objects[i] = object;
@@ -1909,7 +1906,7 @@ void BKE_rigidbody_sync_transforms(RigidBodyWorld *rbw, Object *ob, float ctime)
 {
   RigidBodyOb *rbo = ob->rigidbody_object;
 
-  // True if the shape of this objects parent is of type compound
+  /* True if the shape of this object's parent is of type compound */
   bool obCompoundParent = (ob->parent != NULL && ob->parent->rigidbody_object != NULL &&
                            ob->parent->rigidbody_object->shape == RB_SHAPE_COMPOUND);
 
@@ -2037,7 +2034,7 @@ void BKE_rigidbody_rebuild_world(Depsgraph *depsgraph, Scene *scene, float ctime
   int n = 0;
   FOREACH_COLLECTION_OBJECT_RECURSIVE_BEGIN (rbw->group, object) {
     (void)object;
-    // Check if object is the direct child of an object with a compound shape
+    /* Ignore if this object is the direct child of an object with a compound shape */
     if (object->parent == NULL || object->parent->rigidbody_object == NULL ||
         object->parent->rigidbody_object->shape != RB_SHAPE_COMPOUND) {
       n++;

@@ -868,7 +868,7 @@ void RB_compound_add_child_shape(rbCollisionShape *parentShape,
   btCompoundShape *compoundShape = (btCompoundShape *)(parentShape->cshape);
   compoundShape->addChildShape(trans, shape->cshape);
 
-  // Store shapes for deletion later
+  /* Store shapes for deletion later */
   parentShape->compoundChildShapes = (rbCollisionShape **)(realloc(
       parentShape->compoundChildShapes,
       sizeof(rbCollisionShape *) * (++parentShape->compoundChilds)));
@@ -889,7 +889,7 @@ void RB_shape_delete(rbCollisionShape *shape)
     RB_trimesh_data_delete(shape->mesh);
   delete shape->cshape;
 
-  // Delete compound children if there are any
+  /* Delete compound child shapes if there are any */
   for (int i = 0; i < shape->compoundChilds; i++) {
     RB_shape_delete(shape->compoundChildShapes[i]);
   }
