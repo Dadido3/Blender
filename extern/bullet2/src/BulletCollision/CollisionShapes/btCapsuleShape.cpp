@@ -133,7 +133,7 @@ void	btCapsuleShape::calculateLocalInertia(btScalar mass,btVector3& inertia) con
 	btVector3 halfExtents(radius,radius,radius);
 	halfExtents[getUpAxis()]+=getHalfHeight();
 
-	btScalar margin = CONVEX_DISTANCE_MARGIN;
+	btScalar margin = getMargin();
 
 	btScalar lx=btScalar(2.)*(halfExtents[0]+margin);
 	btScalar ly=btScalar(2.)*(halfExtents[1]+margin);
