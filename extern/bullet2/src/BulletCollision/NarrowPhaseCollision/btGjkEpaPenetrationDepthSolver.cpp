@@ -18,40 +18,38 @@ subject to the following restrictions:
 #include "BulletCollision/CollisionShapes/btConvexShape.h"
 #include "btGjkEpaPenetrationDepthSolver.h"
 
-
 #include "BulletCollision/NarrowPhaseCollision/btGjkEpa2.h"
 
-bool btGjkEpaPenetrationDepthSolver::calcPenDepth( btSimplexSolverInterface& simplexSolver,
-											  const btConvexShape* pConvexA, const btConvexShape* pConvexB,
-											  const btTransform& transformA, const btTransform& transformB,
-											  btVector3& v, btVector3& wWitnessOnA, btVector3& wWitnessOnB,
-											  class btIDebugDraw* debugDraw)
+bool btGjkEpaPenetrationDepthSolver::calcPenDepth(btSimplexSolverInterface& simplexSolver,
+												  const btConvexShape* pConvexA, const btConvexShape* pConvexB,
+												  const btTransform& transformA, const btTransform& transformB,
+												  btVector3& v, btVector3& wWitnessOnA, btVector3& wWitnessOnB,
+												  class btIDebugDraw* debugDraw)
 {
-
 	(void)debugDraw;
 	(void)v;
 	(void)simplexSolver;
 
-//	const btScalar				radialmargin(btScalar(0.));
-	
-	btVector3	guessVector(transformB.getOrigin()-transformA.getOrigin());
-	btGjkEpaSolver2::sResults	results;
-	
+	//	const btScalar				radialmargin(btScalar(0.));
 
-	if(btGjkEpaSolver2::Penetration(pConvexA,transformA,
-								pConvexB,transformB,
-								guessVector,results))
-	
-		{
-	//	debugDraw->drawLine(results.witnesses[1],results.witnesses[1]+results.normal,btVector3(255,0,0));
+	btVector3 guessVector(transformB.getOrigin() - transformA.getOrigin());
+	btGjkEpaSolver2::sResults results;
+
+	if (btGjkEpaSolver2::Penetration(pConvexA, transformA,
+									 pConvexB, transformB,
+									 guessVector, results))
+
+	{
+		//	debugDraw->drawLine(results.witnesses[1],results.witnesses[1]+results.normal,btVector3(255,0,0));
 		//resultOut->addContactPoint(results.normal,results.witnesses[1],-results.depth);
 		wWitnessOnA = results.witnesses[0];
 		wWitnessOnB = results.witnesses[1];
 		v = results.normal;
-		return true;		
-		} else
+		return true;
+	}
+	else
 	{
-		if(btGjkEpaSolver2::Distance(pConvexA,transformA,pConvexB,transformB,guessVector,results))
+		if (btGjkEpaSolver2::Distance(pConvexA, transformA, pConvexB, transformB, guessVector, results))
 		{
 			wWitnessOnA = results.witnesses[0];
 			wWitnessOnB = results.witnesses[1];
@@ -62,5 +60,3 @@ bool btGjkEpaPenetrationDepthSolver::calcPenDepth( btSimplexSolverInterface& sim
 
 	return false;
 }
-
-

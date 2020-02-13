@@ -13,7 +13,6 @@ subject to the following restrictions:
 3. This notice may not be removed or altered from any source distribution.
 */
 
-
 #include <stdio.h>
 #include "LinearMath/btIDebugDraw.h"
 #include "BulletCollision/CollisionDispatch/btGhostObject.h"
@@ -24,19 +23,18 @@ subject to the following restrictions:
 #include "LinearMath/btDefaultMotionState.h"
 #include "btKinematicCharacterController.h"
 
-
 // static helper method
 static btVector3
 getNormalizedVector(const btVector3& v)
 {
 	btVector3 n(0, 0, 0);
 
-	if (v.length() > SIMD_EPSILON) {
+	if (v.length() > SIMD_EPSILON)
+	{
 		n = v.normalized();
 	}
 	return n;
 }
-
 
 ///@todo Interact with dynamic objects,
 ///Ride kinematicly animated platforms properly
@@ -47,18 +45,19 @@ getNormalizedVector(const btVector3& v)
 class btKinematicClosestNotMeRayResultCallback : public btCollisionWorld::ClosestRayResultCallback
 {
 public:
-	btKinematicClosestNotMeRayResultCallback (btCollisionObject* me) : btCollisionWorld::ClosestRayResultCallback(btVector3(0.0, 0.0, 0.0), btVector3(0.0, 0.0, 0.0))
+	btKinematicClosestNotMeRayResultCallback(btCollisionObject* me) : btCollisionWorld::ClosestRayResultCallback(btVector3(0.0, 0.0, 0.0), btVector3(0.0, 0.0, 0.0))
 	{
 		m_me = me;
 	}
 
-	virtual btScalar addSingleResult(btCollisionWorld::LocalRayResult& rayResult,bool normalInWorldSpace)
+	virtual btScalar addSingleResult(btCollisionWorld::LocalRayResult& rayResult, bool normalInWorldSpace)
 	{
 		if (rayResult.m_collisionObject == m_me)
 			return 1.0;
 
-		return ClosestRayResultCallback::addSingleResult (rayResult, normalInWorldSpace);
+		return ClosestRayResultCallback::addSingleResult(rayResult, normalInWorldSpace);
 	}
+
 protected:
 	btCollisionObject* m_me;
 };
@@ -66,15 +65,12 @@ protected:
 class btKinematicClosestNotMeConvexResultCallback : public btCollisionWorld::ClosestConvexResultCallback
 {
 public:
-	btKinematicClosestNotMeConvexResultCallback (btCollisionObject* me, const btVector3& up, btScalar minSlopeDot)
-	: btCollisionWorld::ClosestConvexResultCallback(btVector3(0.0, 0.0, 0.0), btVector3(0.0, 0.0, 0.0))
-	, m_me(me)
-	, m_up(up)
-	, m_minSlopeDot(minSlopeDot)
+	btKinematicClosestNotMeConvexResultCallback(btCollisionObject* me, const btVector3& up, btScalar minSlopeDot)
+		: btCollisionWorld::ClosestConvexResultCallback(btVector3(0.0, 0.0, 0.0), btVector3(0.0, 0.0, 0.0)), m_me(me), m_up(up), m_minSlopeDot(minSlopeDot)
 	{
 	}
 
-	virtual btScalar addSingleResult(btCollisionWorld::LocalConvexResult& convexResult,bool normalInWorldSpace)
+	virtual btScalar addSingleResult(btCollisionWorld::LocalConvexResult& convexResult, bool normalInWorldSpace)
 	{
 		if (convexResult.m_hitCollisionObject == m_me)
 			return btScalar(1.0);
@@ -86,19 +82,22 @@ public:
 		if (normalInWorldSpace)
 		{
 			hitNormalWorld = convexResult.m_hitNormalLocal;
-		} else
+		}
+		else
 		{
 			///need to transform normal into worldspace
-			hitNormalWorld = convexResult.m_hitCollisionObject->getWorldTransform().getBasis()*convexResult.m_hitNormalLocal;
+			hitNormalWorld = convexResult.m_hitCollisionObject->getWorldTransform().getBasis() * convexResult.m_hitNormalLocal;
 		}
 
 		btScalar dotUp = m_up.dot(hitNormalWorld);
-		if (dotUp < m_minSlopeDot) {
+		if (dotUp < m_minSlopeDot)
+		{
 			return btScalar(1.0);
 		}
 
-		return ClosestConvexResultCallback::addSingleResult (convexResult, normalInWorldSpace);
+		return ClosestConvexResultCallback::addSingleResult(convexResult, normalInWorldSpace);
 	}
+
 protected:
 	btCollisionObject* m_me;
 	const btVector3 m_up;
@@ -110,7 +109,7 @@ protected:
  *
  * from: http://www-cs-students.stanford.edu/~adityagp/final/node3.html
  */
-btVector3 btKinematicCharacterController::computeReflectionDirection (const btVector3& direction, const btVector3& normal)
+btVector3 btKinematicCharacterController::computeReflectionDirection(const btVector3& direction, const btVector3& normal)
 {
 	return direction - (btScalar(2.0) * direction.dot(normal)) * normal;
 }
@@ -118,7 +117,7 @@ btVector3 btKinematicCharacterController::computeReflectionDirection (const btVe
 /*
  * Returns the portion of 'direction' that is parallel to 'normal'
  */
-btVector3 btKinematicCharacterController::parallelComponent (const btVector3& direction, const btVector3& normal)
+btVector3 btKinematicCharacterController::parallelComponent(const btVector3& direction, const btVector3& normal)
 {
 	btScalar magnitude = direction.dot(normal);
 	return normal * magnitude;
@@ -127,28 +126,28 @@ btVector3 btKinematicCharacterController::parallelComponent (const btVector3& di
 /*
  * Returns the portion of 'direction' that is perpindicular to 'normal'
  */
-btVector3 btKinematicCharacterController::perpindicularComponent (const btVector3& direction, const btVector3& normal)
+btVector3 btKinematicCharacterController::perpindicularComponent(const btVector3& direction, const btVector3& normal)
 {
 	return direction - parallelComponent(direction, normal);
 }
 
-btKinematicCharacterController::btKinematicCharacterController (btPairCachingGhostObject* ghostObject,btConvexShape* convexShape,btScalar stepHeight, int upAxis)
+btKinematicCharacterController::btKinematicCharacterController(btPairCachingGhostObject* ghostObject, btConvexShape* convexShape, btScalar stepHeight, int upAxis)
 {
 	m_upAxis = upAxis;
 	m_addedMargin = 0.02;
-	m_walkDirection.setValue(0,0,0);
+	m_walkDirection.setValue(0, 0, 0);
 	m_useGhostObjectSweepTest = true;
 	m_ghostObject = ghostObject;
 	m_stepHeight = stepHeight;
 	m_turnAngle = btScalar(0.0);
-	m_convexShape=convexShape;	
-	m_useWalkDirection = true;	// use walk direction by default, legacy behavior
+	m_convexShape = convexShape;
+	m_useWalkDirection = true;  // use walk direction by default, legacy behavior
 	m_velocityTimeInterval = 0.0;
 	m_verticalVelocity = 0.0;
 	m_verticalOffset = 0.0;
-	m_gravity = 9.8 * 3 ; // 3G acceleration.
-	m_fallSpeed = 55.0; // Terminal velocity of a sky diver in m/s.
-	m_jumpSpeed = 10.0; // ?
+	m_gravity = 9.8 * 3;  // 3G acceleration.
+	m_fallSpeed = 55.0;   // Terminal velocity of a sky diver in m/s.
+	m_jumpSpeed = 10.0;   // ?
 	m_wasOnGround = false;
 	m_wasJumping = false;
 	m_interpolateUp = true;
@@ -158,7 +157,7 @@ btKinematicCharacterController::btKinematicCharacterController (btPairCachingGho
 	bounce_fix = false;
 }
 
-btKinematicCharacterController::~btKinematicCharacterController ()
+btKinematicCharacterController::~btKinematicCharacterController()
 {
 }
 
@@ -167,7 +166,7 @@ btPairCachingGhostObject* btKinematicCharacterController::getGhostObject()
 	return m_ghostObject;
 }
 
-bool btKinematicCharacterController::recoverFromPenetration ( btCollisionWorld* collisionWorld)
+bool btKinematicCharacterController::recoverFromPenetration(btCollisionWorld* collisionWorld)
 {
 	// Here we must refresh the overlapping paircache as the penetrating movement itself or the
 	// previous recovery iteration might have used setWorldTransform and pushed us into an object
@@ -178,18 +177,18 @@ bool btKinematicCharacterController::recoverFromPenetration ( btCollisionWorld* 
 	// paircache and the ghostobject's internal paircache at the same time.    /BW
 
 	btVector3 minAabb, maxAabb;
-	m_convexShape->getAabb(m_ghostObject->getWorldTransform(), minAabb,maxAabb);
-	collisionWorld->getBroadphase()->setAabb(m_ghostObject->getBroadphaseHandle(), 
-						 minAabb, 
-						 maxAabb, 
-						 collisionWorld->getDispatcher());
-						 
+	m_convexShape->getAabb(m_ghostObject->getWorldTransform(), minAabb, maxAabb);
+	collisionWorld->getBroadphase()->setAabb(m_ghostObject->getBroadphaseHandle(),
+											 minAabb,
+											 maxAabb,
+											 collisionWorld->getDispatcher());
+
 	bool penetration = false;
 
 	collisionWorld->getDispatcher()->dispatchAllCollisionPairs(m_ghostObject->getOverlappingPairCache(), collisionWorld->getDispatchInfo(), collisionWorld->getDispatcher());
 
 	m_currentPosition = m_ghostObject->getWorldTransform().getOrigin();
-	
+
 	btScalar maxPen = btScalar(0.0);
 	for (int i = 0; i < m_ghostObject->getOverlappingPairCache()->getNumOverlappingPairs(); i++)
 	{
@@ -198,22 +197,21 @@ bool btKinematicCharacterController::recoverFromPenetration ( btCollisionWorld* 
 		btBroadphasePair* collisionPair = &m_ghostObject->getOverlappingPairCache()->getOverlappingPairArray()[i];
 
 		btCollisionObject* obj0 = static_cast<btCollisionObject*>(collisionPair->m_pProxy0->m_clientObject);
-                btCollisionObject* obj1 = static_cast<btCollisionObject*>(collisionPair->m_pProxy1->m_clientObject);
+		btCollisionObject* obj1 = static_cast<btCollisionObject*>(collisionPair->m_pProxy1->m_clientObject);
 
 		if ((obj0 && !obj0->hasContactResponse()) || (obj1 && !obj1->hasContactResponse()))
 			continue;
-		
+
 		if (collisionPair->m_algorithm)
 			collisionPair->m_algorithm->getAllContactManifolds(m_manifoldArray);
 
-		
-		for (int j=0;j<m_manifoldArray.size();j++)
+		for (int j = 0; j < m_manifoldArray.size(); j++)
 		{
 			btPersistentManifold* manifold = m_manifoldArray[j];
 			btScalar directionSign = manifold->getBody0() == m_ghostObject ? btScalar(-1.0) : btScalar(1.0);
-			for (int p=0;p<manifold->getNumContacts();p++)
+			for (int p = 0; p < manifold->getNumContacts(); p++)
 			{
-				const btManifoldPoint&pt = manifold->getContactPoint(p);
+				const btManifoldPoint& pt = manifold->getContactPoint(p);
 
 				btScalar dist = pt.getDistance();
 
@@ -222,109 +220,113 @@ bool btKinematicCharacterController::recoverFromPenetration ( btCollisionWorld* 
 					if (dist < maxPen)
 					{
 						maxPen = dist;
-						m_touchingNormal = pt.m_normalWorldOnB * directionSign;//??
-
+						m_touchingNormal = pt.m_normalWorldOnB * directionSign;  //??
 					}
 					m_currentPosition += pt.m_normalWorldOnB * directionSign * dist * btScalar(0.2);
 					penetration = true;
-				} else {
+				}
+				else
+				{
 					//printf("touching %f\n", dist);
 				}
 			}
-			
+
 			//manifold->clearManifold();
 		}
 	}
 	btTransform newTrans = m_ghostObject->getWorldTransform();
 	newTrans.setOrigin(m_currentPosition);
 	m_ghostObject->setWorldTransform(newTrans);
-//	printf("m_touchingNormal = %f,%f,%f\n",m_touchingNormal[0],m_touchingNormal[1],m_touchingNormal[2]);
+	//	printf("m_touchingNormal = %f,%f,%f\n",m_touchingNormal[0],m_touchingNormal[1],m_touchingNormal[2]);
 	return penetration;
 }
 
-void btKinematicCharacterController::stepUp ( btCollisionWorld* world)
+void btKinematicCharacterController::stepUp(btCollisionWorld* world)
 {
 	// phase 1: up
 	btTransform start, end;
-	m_targetPosition = m_currentPosition + getUpAxisDirections()[m_upAxis] * (m_stepHeight + (m_verticalOffset > 0.f?m_verticalOffset:0.f));
+	m_targetPosition = m_currentPosition + getUpAxisDirections()[m_upAxis] * (m_stepHeight + (m_verticalOffset > 0.f ? m_verticalOffset : 0.f));
 
-	start.setIdentity ();
-	end.setIdentity ();
+	start.setIdentity();
+	end.setIdentity();
 
 	/* FIXME: Handle penetration properly */
-	start.setOrigin (m_currentPosition + getUpAxisDirections()[m_upAxis] * (m_convexShape->getMargin() + m_addedMargin));
-	end.setOrigin (m_targetPosition);
+	start.setOrigin(m_currentPosition + getUpAxisDirections()[m_upAxis] * (m_convexShape->getMargin() + m_addedMargin));
+	end.setOrigin(m_targetPosition);
 
-	btKinematicClosestNotMeConvexResultCallback callback (m_ghostObject, -getUpAxisDirections()[m_upAxis], btScalar(0.7071));
+	btKinematicClosestNotMeConvexResultCallback callback(m_ghostObject, -getUpAxisDirections()[m_upAxis], btScalar(0.7071));
 	callback.m_collisionFilterGroup = getGhostObject()->getBroadphaseHandle()->m_collisionFilterGroup;
 	callback.m_collisionFilterMask = getGhostObject()->getBroadphaseHandle()->m_collisionFilterMask;
-	
+
 	if (m_useGhostObjectSweepTest)
 	{
-		m_ghostObject->convexSweepTest (m_convexShape, start, end, callback, world->getDispatchInfo().m_allowedCcdPenetration);
+		m_ghostObject->convexSweepTest(m_convexShape, start, end, callback, world->getDispatchInfo().m_allowedCcdPenetration);
 	}
 	else
 	{
-		world->convexSweepTest (m_convexShape, start, end, callback);
+		world->convexSweepTest(m_convexShape, start, end, callback);
 	}
-	
+
 	if (callback.hasHit())
 	{
 		// Only modify the position if the hit was a slope and not a wall or ceiling.
-		if(callback.m_hitNormalWorld.dot(getUpAxisDirections()[m_upAxis]) > 0.0)
+		if (callback.m_hitNormalWorld.dot(getUpAxisDirections()[m_upAxis]) > 0.0)
 		{
 			// we moved up only a fraction of the step height
 			m_currentStepOffset = m_stepHeight * callback.m_closestHitFraction;
 			if (m_interpolateUp == true)
-				m_currentPosition.setInterpolate3 (m_currentPosition, m_targetPosition, callback.m_closestHitFraction);
+				m_currentPosition.setInterpolate3(m_currentPosition, m_targetPosition, callback.m_closestHitFraction);
 			else
 				m_currentPosition = m_targetPosition;
 		}
 		m_verticalVelocity = 0.0;
 		m_verticalOffset = 0.0;
-	} else {
+	}
+	else
+	{
 		m_currentStepOffset = m_stepHeight;
 		m_currentPosition = m_targetPosition;
 	}
 }
 
-void btKinematicCharacterController::updateTargetPositionBasedOnCollision (const btVector3& hitNormal, btScalar tangentMag, btScalar normalMag)
+void btKinematicCharacterController::updateTargetPositionBasedOnCollision(const btVector3& hitNormal, btScalar tangentMag, btScalar normalMag)
 {
 	btVector3 movementDirection = m_targetPosition - m_currentPosition;
 	btScalar movementLength = movementDirection.length();
-	if (movementLength>SIMD_EPSILON)
+	if (movementLength > SIMD_EPSILON)
 	{
 		movementDirection.normalize();
 
-		btVector3 reflectDir = computeReflectionDirection (movementDirection, hitNormal);
+		btVector3 reflectDir = computeReflectionDirection(movementDirection, hitNormal);
 		reflectDir.normalize();
 
 		btVector3 parallelDir, perpindicularDir;
 
-		parallelDir = parallelComponent (reflectDir, hitNormal);
-		perpindicularDir = perpindicularComponent (reflectDir, hitNormal);
+		parallelDir = parallelComponent(reflectDir, hitNormal);
+		perpindicularDir = perpindicularComponent(reflectDir, hitNormal);
 
 		m_targetPosition = m_currentPosition;
-		if (0)//tangentMag != 0.0)
+		if (0)  //tangentMag != 0.0)
 		{
-			btVector3 parComponent = parallelDir * btScalar (tangentMag*movementLength);
-//			printf("parComponent=%f,%f,%f\n",parComponent[0],parComponent[1],parComponent[2]);
-			m_targetPosition +=  parComponent;
+			btVector3 parComponent = parallelDir * btScalar(tangentMag * movementLength);
+			//			printf("parComponent=%f,%f,%f\n",parComponent[0],parComponent[1],parComponent[2]);
+			m_targetPosition += parComponent;
 		}
 
 		if (normalMag != 0.0)
 		{
-			btVector3 perpComponent = perpindicularDir * btScalar (normalMag*movementLength);
-//			printf("perpComponent=%f,%f,%f\n",perpComponent[0],perpComponent[1],perpComponent[2]);
+			btVector3 perpComponent = perpindicularDir * btScalar(normalMag * movementLength);
+			//			printf("perpComponent=%f,%f,%f\n",perpComponent[0],perpComponent[1],perpComponent[2]);
 			m_targetPosition += perpComponent;
 		}
-	} else
+	}
+	else
 	{
-//		printf("movementLength don't normalize a zero vector\n");
+		//		printf("movementLength don't normalize a zero vector\n");
 	}
 }
 
-void btKinematicCharacterController::stepForwardAndStrafe ( btCollisionWorld* collisionWorld, const btVector3& walkMove)
+void btKinematicCharacterController::stepForwardAndStrafe(btCollisionWorld* collisionWorld, const btVector3& walkMove)
 {
 	// printf("m_normalizedDirection=%f,%f,%f\n",
 	// 	m_normalizedDirection[0],m_normalizedDirection[1],m_normalizedDirection[2]);
@@ -332,12 +334,12 @@ void btKinematicCharacterController::stepForwardAndStrafe ( btCollisionWorld* co
 	btTransform start, end;
 	m_targetPosition = m_currentPosition + walkMove;
 
-	start.setIdentity ();
-	end.setIdentity ();
-	
+	start.setIdentity();
+	end.setIdentity();
+
 	btScalar fraction = 1.0;
-	btScalar distance2 = (m_currentPosition-m_targetPosition).length2();
-//	printf("distance2=%f\n",distance2);
+	btScalar distance2 = (m_currentPosition - m_targetPosition).length2();
+	//	printf("distance2=%f\n",distance2);
 
 	if (m_touchingContact)
 	{
@@ -352,41 +354,39 @@ void btKinematicCharacterController::stepForwardAndStrafe ( btCollisionWorld* co
 
 	while (fraction > btScalar(0.01) && maxIter-- > 0)
 	{
-		start.setOrigin (m_currentPosition);
-		end.setOrigin (m_targetPosition);
+		start.setOrigin(m_currentPosition);
+		end.setOrigin(m_targetPosition);
 		btVector3 sweepDirNegative(m_currentPosition - m_targetPosition);
 
-		btKinematicClosestNotMeConvexResultCallback callback (m_ghostObject, sweepDirNegative, btScalar(0.0));
+		btKinematicClosestNotMeConvexResultCallback callback(m_ghostObject, sweepDirNegative, btScalar(0.0));
 		callback.m_collisionFilterGroup = getGhostObject()->getBroadphaseHandle()->m_collisionFilterGroup;
 		callback.m_collisionFilterMask = getGhostObject()->getBroadphaseHandle()->m_collisionFilterMask;
-
 
 		btScalar margin = m_convexShape->getMargin();
 		m_convexShape->setMargin(margin + m_addedMargin);
 
-
 		if (m_useGhostObjectSweepTest)
 		{
-			m_ghostObject->convexSweepTest (m_convexShape, start, end, callback, collisionWorld->getDispatchInfo().m_allowedCcdPenetration);
-		} else
-		{
-			collisionWorld->convexSweepTest (m_convexShape, start, end, callback, collisionWorld->getDispatchInfo().m_allowedCcdPenetration);
+			m_ghostObject->convexSweepTest(m_convexShape, start, end, callback, collisionWorld->getDispatchInfo().m_allowedCcdPenetration);
 		}
-		
+		else
+		{
+			collisionWorld->convexSweepTest(m_convexShape, start, end, callback, collisionWorld->getDispatchInfo().m_allowedCcdPenetration);
+		}
+
 		m_convexShape->setMargin(margin);
 
-		
 		fraction -= callback.m_closestHitFraction;
 
 		if (callback.hasHit())
-		{	
+		{
 			// we moved only a fraction
 			//btScalar hitDistance;
 			//hitDistance = (callback.m_hitPointWorld - m_currentPosition).length();
 
-//			m_currentPosition.setInterpolate3 (m_currentPosition, m_targetPosition, callback.m_closestHitFraction);
+			//			m_currentPosition.setInterpolate3 (m_currentPosition, m_targetPosition, callback.m_closestHitFraction);
 
-			updateTargetPositionBasedOnCollision (callback.m_hitNormalWorld);
+			updateTargetPositionBasedOnCollision(callback.m_hitNormalWorld);
 			btVector3 currentDir = m_targetPosition - m_currentPosition;
 			distance2 = currentDir.length2();
 			if (distance2 > SIMD_EPSILON)
@@ -397,24 +397,25 @@ void btKinematicCharacterController::stepForwardAndStrafe ( btCollisionWorld* co
 				{
 					break;
 				}
-			} else
+			}
+			else
 			{
-//				printf("currentDir: don't normalize a zero vector\n");
+				//				printf("currentDir: don't normalize a zero vector\n");
 				break;
 			}
-
-		} else {
+		}
+		else
+		{
 			// we moved whole way
 			m_currentPosition = m_targetPosition;
 		}
 
-	//	if (callback.m_closestHitFraction == 0.f)
-	//		break;
-
+		//	if (callback.m_closestHitFraction == 0.f)
+		//		break;
 	}
 }
 
-void btKinematicCharacterController::stepDown ( btCollisionWorld* collisionWorld, btScalar dt)
+void btKinematicCharacterController::stepDown(btCollisionWorld* collisionWorld, btScalar dt)
 {
 	btTransform start, end, end_double;
 	bool runonce = false;
@@ -427,77 +428,76 @@ void btKinematicCharacterController::stepDown ( btCollisionWorld* collisionWorld
 	m_targetPosition -= (step_drop + gravity_drop);*/
 
 	btVector3 orig_position = m_targetPosition;
-	
-	btScalar downVelocity = (m_verticalVelocity<0.f?-m_verticalVelocity:0.f) * dt;
 
-	if(downVelocity > 0.0 && downVelocity > m_fallSpeed
-		&& (m_wasOnGround || !m_wasJumping))
+	btScalar downVelocity = (m_verticalVelocity < 0.f ? -m_verticalVelocity : 0.f) * dt;
+
+	if (downVelocity > 0.0 && downVelocity > m_fallSpeed && (m_wasOnGround || !m_wasJumping))
 		downVelocity = m_fallSpeed;
 
 	btVector3 step_drop = getUpAxisDirections()[m_upAxis] * (m_currentStepOffset + downVelocity);
 	m_targetPosition -= step_drop;
 
-	btKinematicClosestNotMeConvexResultCallback callback (m_ghostObject, getUpAxisDirections()[m_upAxis], m_maxSlopeCosine);
-        callback.m_collisionFilterGroup = getGhostObject()->getBroadphaseHandle()->m_collisionFilterGroup;
-        callback.m_collisionFilterMask = getGhostObject()->getBroadphaseHandle()->m_collisionFilterMask;
+	btKinematicClosestNotMeConvexResultCallback callback(m_ghostObject, getUpAxisDirections()[m_upAxis], m_maxSlopeCosine);
+	callback.m_collisionFilterGroup = getGhostObject()->getBroadphaseHandle()->m_collisionFilterGroup;
+	callback.m_collisionFilterMask = getGhostObject()->getBroadphaseHandle()->m_collisionFilterMask;
 
-        btKinematicClosestNotMeConvexResultCallback callback2 (m_ghostObject, getUpAxisDirections()[m_upAxis], m_maxSlopeCosine);
-        callback2.m_collisionFilterGroup = getGhostObject()->getBroadphaseHandle()->m_collisionFilterGroup;
-        callback2.m_collisionFilterMask = getGhostObject()->getBroadphaseHandle()->m_collisionFilterMask;
+	btKinematicClosestNotMeConvexResultCallback callback2(m_ghostObject, getUpAxisDirections()[m_upAxis], m_maxSlopeCosine);
+	callback2.m_collisionFilterGroup = getGhostObject()->getBroadphaseHandle()->m_collisionFilterGroup;
+	callback2.m_collisionFilterMask = getGhostObject()->getBroadphaseHandle()->m_collisionFilterMask;
 
 	while (1)
 	{
-		start.setIdentity ();
-		end.setIdentity ();
+		start.setIdentity();
+		end.setIdentity();
 
-		end_double.setIdentity ();
+		end_double.setIdentity();
 
-		start.setOrigin (m_currentPosition);
-		end.setOrigin (m_targetPosition);
+		start.setOrigin(m_currentPosition);
+		end.setOrigin(m_targetPosition);
 
 		//set double test for 2x the step drop, to check for a large drop vs small drop
-		end_double.setOrigin (m_targetPosition - step_drop);
+		end_double.setOrigin(m_targetPosition - step_drop);
 
 		if (m_useGhostObjectSweepTest)
 		{
-			m_ghostObject->convexSweepTest (m_convexShape, start, end, callback, collisionWorld->getDispatchInfo().m_allowedCcdPenetration);
+			m_ghostObject->convexSweepTest(m_convexShape, start, end, callback, collisionWorld->getDispatchInfo().m_allowedCcdPenetration);
 
 			if (!callback.hasHit())
 			{
 				//test a double fall height, to see if the character should interpolate it's fall (full) or not (partial)
-				m_ghostObject->convexSweepTest (m_convexShape, start, end_double, callback2, collisionWorld->getDispatchInfo().m_allowedCcdPenetration);
+				m_ghostObject->convexSweepTest(m_convexShape, start, end_double, callback2, collisionWorld->getDispatchInfo().m_allowedCcdPenetration);
 			}
-		} else
+		}
+		else
 		{
-			collisionWorld->convexSweepTest (m_convexShape, start, end, callback, collisionWorld->getDispatchInfo().m_allowedCcdPenetration);
+			collisionWorld->convexSweepTest(m_convexShape, start, end, callback, collisionWorld->getDispatchInfo().m_allowedCcdPenetration);
 
 			if (!callback.hasHit())
-					{
-							//test a double fall height, to see if the character should interpolate it's fall (large) or not (small)
-							collisionWorld->convexSweepTest (m_convexShape, start, end_double, callback2, collisionWorld->getDispatchInfo().m_allowedCcdPenetration);
-					}
+			{
+				//test a double fall height, to see if the character should interpolate it's fall (large) or not (small)
+				collisionWorld->convexSweepTest(m_convexShape, start, end_double, callback2, collisionWorld->getDispatchInfo().m_allowedCcdPenetration);
+			}
 		}
-	
-		btScalar downVelocity2 = (m_verticalVelocity<0.f?-m_verticalVelocity:0.f) * dt;
+
+		btScalar downVelocity2 = (m_verticalVelocity < 0.f ? -m_verticalVelocity : 0.f) * dt;
 		bool has_hit = false;
 		if (bounce_fix == true)
 			has_hit = callback.hasHit() || callback2.hasHit();
 		else
 			has_hit = callback2.hasHit();
 
-		if(downVelocity2 > 0.0 && downVelocity2 < m_stepHeight && has_hit == true && runonce == false
-					&& (m_wasOnGround || !m_wasJumping))
+		if (downVelocity2 > 0.0 && downVelocity2 < m_stepHeight && has_hit == true && runonce == false && (m_wasOnGround || !m_wasJumping))
 		{
 			//redo the velocity calculation when falling a small amount, for fast stairs motion
 			//for larger falls, use the smoother/slower interpolated movement by not touching the target position
 
 			m_targetPosition = orig_position;
-					downVelocity = m_stepHeight;
+			downVelocity = m_stepHeight;
 
-				btVector3 step_drop = getUpAxisDirections()[m_upAxis] * (m_currentStepOffset + downVelocity);
+			btVector3 step_drop = getUpAxisDirections()[m_upAxis] * (m_currentStepOffset + downVelocity);
 			m_targetPosition -= step_drop;
 			runonce = true;
-			continue; //re-run previous tests
+			continue;  //re-run previous tests
 		}
 		break;
 	}
@@ -513,30 +513,32 @@ void btKinematicCharacterController::stepDown ( btCollisionWorld* collisionWorld
 		if (bounce_fix == true)
 		{
 			if (full_drop == true)
-                                m_currentPosition.setInterpolate3 (m_currentPosition, m_targetPosition, callback.m_closestHitFraction);
-                        else
-                                //due to errors in the closestHitFraction variable when used with large polygons, calculate the hit fraction manually
-                                m_currentPosition.setInterpolate3 (m_currentPosition, m_targetPosition, fraction);
+				m_currentPosition.setInterpolate3(m_currentPosition, m_targetPosition, callback.m_closestHitFraction);
+			else
+				//due to errors in the closestHitFraction variable when used with large polygons, calculate the hit fraction manually
+				m_currentPosition.setInterpolate3(m_currentPosition, m_targetPosition, fraction);
 		}
 		else
-			m_currentPosition.setInterpolate3 (m_currentPosition, m_targetPosition, callback.m_closestHitFraction);
+			m_currentPosition.setInterpolate3(m_currentPosition, m_targetPosition, callback.m_closestHitFraction);
 
 		full_drop = false;
 
 		m_verticalVelocity = 0.0;
 		m_verticalOffset = 0.0;
 		m_wasJumping = false;
-	} else {
+	}
+	else
+	{
 		// we dropped the full height
-		
+
 		full_drop = true;
 
 		if (bounce_fix == true)
 		{
-			downVelocity = (m_verticalVelocity<0.f?-m_verticalVelocity:0.f) * dt;
+			downVelocity = (m_verticalVelocity < 0.f ? -m_verticalVelocity : 0.f) * dt;
 			if (downVelocity > m_fallSpeed && (m_wasOnGround || !m_wasJumping))
 			{
-				m_targetPosition += step_drop; //undo previous target change
+				m_targetPosition += step_drop;  //undo previous target change
 				downVelocity = m_fallSpeed;
 				step_drop = getUpAxisDirections()[m_upAxis] * (m_currentStepOffset + downVelocity);
 				m_targetPosition -= step_drop;
@@ -548,30 +550,22 @@ void btKinematicCharacterController::stepDown ( btCollisionWorld* collisionWorld
 	}
 }
 
-
-
-void btKinematicCharacterController::setWalkDirection
-(
-const btVector3& walkDirection
-)
+void btKinematicCharacterController::setWalkDirection(
+	const btVector3& walkDirection)
 {
 	m_useWalkDirection = true;
 	m_walkDirection = walkDirection;
 	m_normalizedDirection = getNormalizedVector(m_walkDirection);
 }
 
-
-
-void btKinematicCharacterController::setVelocityForTimeInterval
-(
-const btVector3& velocity,
-btScalar timeInterval
-)
+void btKinematicCharacterController::setVelocityForTimeInterval(
+	const btVector3& velocity,
+	btScalar timeInterval)
 {
-//	printf("setVelocity!\n");
-//	printf("  interval: %f\n", timeInterval);
-//	printf("  velocity: (%f, %f, %f)\n",
-//		 velocity.x(), velocity.y(), velocity.z());
+	//	printf("setVelocity!\n");
+	//	printf("  interval: %f\n", timeInterval);
+	//	printf("  velocity: (%f, %f, %f)\n",
+	//		 velocity.x(), velocity.y(), velocity.z());
 
 	m_useWalkDirection = false;
 	m_walkDirection = velocity;
@@ -579,38 +573,36 @@ btScalar timeInterval
 	m_velocityTimeInterval += timeInterval;
 }
 
-void btKinematicCharacterController::reset ( btCollisionWorld* collisionWorld )
+void btKinematicCharacterController::reset(btCollisionWorld* collisionWorld)
 {
-        m_verticalVelocity = 0.0;
-        m_verticalOffset = 0.0;
-        m_wasOnGround = false;
-        m_wasJumping = false;
-        m_walkDirection.setValue(0,0,0);
-        m_velocityTimeInterval = 0.0;
+	m_verticalVelocity = 0.0;
+	m_verticalOffset = 0.0;
+	m_wasOnGround = false;
+	m_wasJumping = false;
+	m_walkDirection.setValue(0, 0, 0);
+	m_velocityTimeInterval = 0.0;
 
-        //clear pair cache
-        btHashedOverlappingPairCache *cache = m_ghostObject->getOverlappingPairCache();
-        while (cache->getOverlappingPairArray().size() > 0)
-        {
-                cache->removeOverlappingPair(cache->getOverlappingPairArray()[0].m_pProxy0, cache->getOverlappingPairArray()[0].m_pProxy1, collisionWorld->getDispatcher());
-        }
+	//clear pair cache
+	btHashedOverlappingPairCache* cache = m_ghostObject->getOverlappingPairCache();
+	while (cache->getOverlappingPairArray().size() > 0)
+	{
+		cache->removeOverlappingPair(cache->getOverlappingPairArray()[0].m_pProxy0, cache->getOverlappingPairArray()[0].m_pProxy1, collisionWorld->getDispatcher());
+	}
 }
 
-void btKinematicCharacterController::warp (const btVector3& origin)
+void btKinematicCharacterController::warp(const btVector3& origin)
 {
 	btTransform xform;
 	xform.setIdentity();
-	xform.setOrigin (origin);
-	m_ghostObject->setWorldTransform (xform);
+	xform.setOrigin(origin);
+	m_ghostObject->setWorldTransform(xform);
 }
 
-
-void btKinematicCharacterController::preStep (  btCollisionWorld* collisionWorld)
+void btKinematicCharacterController::preStep(btCollisionWorld* collisionWorld)
 {
-	
 	int numPenetrationLoops = 0;
 	m_touchingContact = false;
-	while (recoverFromPenetration (collisionWorld))
+	while (recoverFromPenetration(collisionWorld))
 	{
 		numPenetrationLoops++;
 		m_touchingContact = true;
@@ -623,49 +615,50 @@ void btKinematicCharacterController::preStep (  btCollisionWorld* collisionWorld
 
 	m_currentPosition = m_ghostObject->getWorldTransform().getOrigin();
 	m_targetPosition = m_currentPosition;
-//	printf("m_targetPosition=%f,%f,%f\n",m_targetPosition[0],m_targetPosition[1],m_targetPosition[2]);
-
-	
+	//	printf("m_targetPosition=%f,%f,%f\n",m_targetPosition[0],m_targetPosition[1],m_targetPosition[2]);
 }
 
 #include <stdio.h>
 
-void btKinematicCharacterController::playerStep (  btCollisionWorld* collisionWorld, btScalar dt)
+void btKinematicCharacterController::playerStep(btCollisionWorld* collisionWorld, btScalar dt)
 {
-//	printf("playerStep(): ");
-//	printf("  dt = %f", dt);
+	//	printf("playerStep(): ");
+	//	printf("  dt = %f", dt);
 
 	// quick check...
-	if (!m_useWalkDirection && (m_velocityTimeInterval <= 0.0 || m_walkDirection.fuzzyZero())) {
-//		printf("\n");
-		return;		// no motion
+	if (!m_useWalkDirection && (m_velocityTimeInterval <= 0.0 || m_walkDirection.fuzzyZero()))
+	{
+		//		printf("\n");
+		return;  // no motion
 	}
 
 	m_wasOnGround = onGround();
 
 	// Update fall velocity.
 	m_verticalVelocity -= m_gravity * dt;
-	if(m_verticalVelocity > 0.0 && m_verticalVelocity > m_jumpSpeed)
+	if (m_verticalVelocity > 0.0 && m_verticalVelocity > m_jumpSpeed)
 	{
 		m_verticalVelocity = m_jumpSpeed;
 	}
-	if(m_verticalVelocity < 0.0 && btFabs(m_verticalVelocity) > btFabs(m_fallSpeed))
+	if (m_verticalVelocity < 0.0 && btFabs(m_verticalVelocity) > btFabs(m_fallSpeed))
 	{
 		m_verticalVelocity = -btFabs(m_fallSpeed);
 	}
 	m_verticalOffset = m_verticalVelocity * dt;
 
-
 	btTransform xform;
-	xform = m_ghostObject->getWorldTransform ();
+	xform = m_ghostObject->getWorldTransform();
 
-//	printf("walkDirection(%f,%f,%f)\n",walkDirection[0],walkDirection[1],walkDirection[2]);
-//	printf("walkSpeed=%f\n",walkSpeed);
+	//	printf("walkDirection(%f,%f,%f)\n",walkDirection[0],walkDirection[1],walkDirection[2]);
+	//	printf("walkSpeed=%f\n",walkSpeed);
 
-	stepUp (collisionWorld);
-	if (m_useWalkDirection) {
-		stepForwardAndStrafe (collisionWorld, m_walkDirection);
-	} else {
+	stepUp(collisionWorld);
+	if (m_useWalkDirection)
+	{
+		stepForwardAndStrafe(collisionWorld, m_walkDirection);
+	}
+	else
+	{
 		//printf("  time: %f", m_velocityTimeInterval);
 		// still have some time left for moving!
 		btScalar dtMoving =
@@ -680,35 +673,35 @@ void btKinematicCharacterController::playerStep (  btCollisionWorld* collisionWo
 		// okay, step
 		stepForwardAndStrafe(collisionWorld, move);
 	}
-	stepDown (collisionWorld, dt);
+	stepDown(collisionWorld, dt);
 
 	// printf("\n");
 
-	xform.setOrigin (m_currentPosition);
-	m_ghostObject->setWorldTransform (xform);
+	xform.setOrigin(m_currentPosition);
+	m_ghostObject->setWorldTransform(xform);
 }
 
-void btKinematicCharacterController::setFallSpeed (btScalar fallSpeed)
+void btKinematicCharacterController::setFallSpeed(btScalar fallSpeed)
 {
 	m_fallSpeed = fallSpeed;
 }
 
-void btKinematicCharacterController::setJumpSpeed (btScalar jumpSpeed)
+void btKinematicCharacterController::setJumpSpeed(btScalar jumpSpeed)
 {
 	m_jumpSpeed = jumpSpeed;
 }
 
-void btKinematicCharacterController::setMaxJumpHeight (btScalar maxJumpHeight)
+void btKinematicCharacterController::setMaxJumpHeight(btScalar maxJumpHeight)
 {
 	m_maxJumpHeight = maxJumpHeight;
 }
 
-bool btKinematicCharacterController::canJump () const
+bool btKinematicCharacterController::canJump() const
 {
 	return onGround();
 }
 
-void btKinematicCharacterController::jump ()
+void btKinematicCharacterController::jump()
 {
 	if (!canJump())
 		return;
@@ -748,16 +741,15 @@ btScalar btKinematicCharacterController::getMaxSlope() const
 	return m_maxSlopeRadians;
 }
 
-bool btKinematicCharacterController::onGround () const
+bool btKinematicCharacterController::onGround() const
 {
 	return m_verticalVelocity == 0.0 && m_verticalOffset == 0.0;
 }
 
-
 btVector3* btKinematicCharacterController::getUpAxisDirections()
 {
-	static btVector3 sUpAxisDirection[3] = { btVector3(1.0f, 0.0f, 0.0f), btVector3(0.0f, 1.0f, 0.0f), btVector3(0.0f, 0.0f, 1.0f) };
-	
+	static btVector3 sUpAxisDirection[3] = {btVector3(1.0f, 0.0f, 0.0f), btVector3(0.0f, 1.0f, 0.0f), btVector3(0.0f, 0.0f, 1.0f)};
+
 	return sUpAxisDirection;
 }
 

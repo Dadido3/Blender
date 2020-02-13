@@ -16,7 +16,6 @@ subject to the following restrictions:
 #ifndef BT_PERSISTENT_MANIFOLD_H
 #define BT_PERSISTENT_MANIFOLD_H
 
-
 #include "LinearMath/btVector3.h"
 #include "LinearMath/btTransform.h"
 #include "btManifoldPoint.h"
@@ -29,8 +28,8 @@ struct btCollisionResult;
 extern btScalar gContactBreakingThreshold;
 
 typedef bool (*ContactDestroyedCallback)(void* userPersistentData);
-typedef bool (*ContactProcessedCallback)(btManifoldPoint& cp,void* body0,void* body1);
-extern ContactDestroyedCallback	gContactDestroyedCallback;
+typedef bool (*ContactProcessedCallback)(btManifoldPoint& cp, void* body0, void* body1);
+extern ContactDestroyedCallback gContactDestroyedCallback;
 extern ContactProcessedCallback gContactProcessedCallback;
 
 //the enum starts at 1024 to avoid type conflicts with btTypedConstraint
@@ -50,69 +49,70 @@ enum btContactManifoldTypes
 ///the contact point with deepest penetration is always kept, and it tries to maximuze the area covered by the points
 ///note that some pairs of objects might have more then one contact manifold.
 
-
-ATTRIBUTE_ALIGNED128( class) btPersistentManifold : public btTypedObject
+ATTRIBUTE_ALIGNED128(class)
+btPersistentManifold : public btTypedObject
 //ATTRIBUTE_ALIGNED16( class) btPersistentManifold : public btTypedObject
 {
-
 	btManifoldPoint m_pointCache[MANIFOLD_CACHE_SIZE];
 
 	/// this two body pointers can point to the physics rigidbody class.
 	const btCollisionObject* m_body0;
 	const btCollisionObject* m_body1;
 
-	int	m_cachedPoints;
+	int m_cachedPoints;
 
-	btScalar	m_contactBreakingThreshold;
-	btScalar	m_contactProcessingThreshold;
+	btScalar m_contactBreakingThreshold;
+	btScalar m_contactProcessingThreshold;
 
-	
 	/// sort cached points so most isolated points come first
-	int	sortCachedPoints(const btManifoldPoint& pt);
+	int sortCachedPoints(const btManifoldPoint& pt);
 
-	int		findContactPoint(const btManifoldPoint* unUsed, int numUnused,const btManifoldPoint& pt);
+	int findContactPoint(const btManifoldPoint* unUsed, int numUnused, const btManifoldPoint& pt);
 
 public:
-
 	BT_DECLARE_ALIGNED_ALLOCATOR();
 
-	int	m_companionIdA;
-	int	m_companionIdB;
+	int m_companionIdA;
+	int m_companionIdB;
 
 	int m_index1a;
 
 	btPersistentManifold();
 
-	btPersistentManifold(const btCollisionObject* body0,const btCollisionObject* body1,int , btScalar contactBreakingThreshold,btScalar contactProcessingThreshold)
+	btPersistentManifold(const btCollisionObject* body0, const btCollisionObject* body1, int, btScalar contactBreakingThreshold, btScalar contactProcessingThreshold)
 		: btTypedObject(BT_PERSISTENT_MANIFOLD_TYPE),
-	m_body0(body0),m_body1(body1),m_cachedPoints(0),
-		m_contactBreakingThreshold(contactBreakingThreshold),
-		m_contactProcessingThreshold(contactProcessingThreshold)
+		  m_body0(body0),
+		  m_body1(body1),
+		  m_cachedPoints(0),
+		  m_contactBreakingThreshold(contactBreakingThreshold),
+		  m_contactProcessingThreshold(contactProcessingThreshold)
 	{
 	}
 
-	SIMD_FORCE_INLINE const btCollisionObject* getBody0() const { return m_body0;}
-	SIMD_FORCE_INLINE const btCollisionObject* getBody1() const { return m_body1;}
+	SIMD_FORCE_INLINE const btCollisionObject* getBody0() const { return m_body0; }
+	SIMD_FORCE_INLINE const btCollisionObject* getBody1() const { return m_body1; }
 
-	void	setBodies(const btCollisionObject* body0,const btCollisionObject* body1)
+	void setBodies(const btCollisionObject* body0, const btCollisionObject* body1)
 	{
 		m_body0 = body0;
 		m_body1 = body1;
 	}
 
-	void clearUserCache(btManifoldPoint& pt);
+	void clearUserCache(btManifoldPoint & pt);
 
 #ifdef DEBUG_PERSISTENCY
-	void	DebugPersistency();
-#endif //
-	
-	SIMD_FORCE_INLINE int	getNumContacts() const { return m_cachedPoints;}
+	void DebugPersistency();
+#endif  //
+
+	SIMD_FORCE_INLINE int getNumContacts() const
+	{
+		return m_cachedPoints;
+	}
 	/// the setNumContacts API is usually not used, except when you gather/fill all contacts manually
 	void setNumContacts(int cachedPoints)
 	{
 		m_cachedPoints = cachedPoints;
 	}
-
 
 	SIMD_FORCE_INLINE const btManifoldPoint& getContactPoint(int index) const
 	{
@@ -127,39 +127,36 @@ public:
 	}
 
 	///@todo: get this margin from the current physics / collision environment
-	btScalar	getContactBreakingThreshold() const;
+	btScalar getContactBreakingThreshold() const;
 
-	btScalar	getContactProcessingThreshold() const
+	btScalar getContactProcessingThreshold() const
 	{
 		return m_contactProcessingThreshold;
 	}
-	
+
 	void setContactBreakingThreshold(btScalar contactBreakingThreshold)
 	{
 		m_contactBreakingThreshold = contactBreakingThreshold;
 	}
 
-	void setContactProcessingThreshold(btScalar	contactProcessingThreshold)
+	void setContactProcessingThreshold(btScalar contactProcessingThreshold)
 	{
 		m_contactProcessingThreshold = contactProcessingThreshold;
 	}
-	
-	
-
 
 	int getCacheEntry(const btManifoldPoint& newPoint) const;
 
-	int addManifoldPoint( const btManifoldPoint& newPoint, bool isPredictive=false);
+	int addManifoldPoint(const btManifoldPoint& newPoint, bool isPredictive = false);
 
-	void removeContactPoint (int index)
+	void removeContactPoint(int index)
 	{
 		clearUserCache(m_pointCache[index]);
 
 		int lastUsedIndex = getNumContacts() - 1;
-//		m_pointCache[index] = m_pointCache[lastUsedIndex];
-		if(index != lastUsedIndex) 
+		//		m_pointCache[index] = m_pointCache[lastUsedIndex];
+		if (index != lastUsedIndex)
 		{
-			m_pointCache[index] = m_pointCache[lastUsedIndex]; 
+			m_pointCache[index] = m_pointCache[lastUsedIndex];
 			//get rid of duplicated userPersistentData pointer
 			m_pointCache[lastUsedIndex].m_userPersistentData = 0;
 			m_pointCache[lastUsedIndex].m_appliedImpulse = 0.f;
@@ -169,68 +166,55 @@ public:
 			m_pointCache[lastUsedIndex].m_lifeTime = 0;
 		}
 
-		btAssert(m_pointCache[lastUsedIndex].m_userPersistentData==0);
+		btAssert(m_pointCache[lastUsedIndex].m_userPersistentData == 0);
 		m_cachedPoints--;
 	}
-	void replaceContactPoint(const btManifoldPoint& newPoint,int insertIndex)
+	void replaceContactPoint(const btManifoldPoint& newPoint, int insertIndex)
 	{
 		btAssert(validContactDistance(newPoint));
 
 #define MAINTAIN_PERSISTENCY 1
 #ifdef MAINTAIN_PERSISTENCY
-		int	lifeTime = m_pointCache[insertIndex].getLifeTime();
-		btScalar	appliedImpulse = m_pointCache[insertIndex].m_appliedImpulse;
-		btScalar	appliedLateralImpulse1 = m_pointCache[insertIndex].m_appliedImpulseLateral1;
-		btScalar	appliedLateralImpulse2 = m_pointCache[insertIndex].m_appliedImpulseLateral2;
-//		bool isLateralFrictionInitialized = m_pointCache[insertIndex].m_lateralFrictionInitialized;
-		
-		
-			
-		btAssert(lifeTime>=0);
+		int lifeTime = m_pointCache[insertIndex].getLifeTime();
+		btScalar appliedImpulse = m_pointCache[insertIndex].m_appliedImpulse;
+		btScalar appliedLateralImpulse1 = m_pointCache[insertIndex].m_appliedImpulseLateral1;
+		btScalar appliedLateralImpulse2 = m_pointCache[insertIndex].m_appliedImpulseLateral2;
+		//		bool isLateralFrictionInitialized = m_pointCache[insertIndex].m_lateralFrictionInitialized;
+
+		btAssert(lifeTime >= 0);
 		void* cache = m_pointCache[insertIndex].m_userPersistentData;
-		
+
 		m_pointCache[insertIndex] = newPoint;
 
 		m_pointCache[insertIndex].m_userPersistentData = cache;
 		m_pointCache[insertIndex].m_appliedImpulse = appliedImpulse;
 		m_pointCache[insertIndex].m_appliedImpulseLateral1 = appliedLateralImpulse1;
 		m_pointCache[insertIndex].m_appliedImpulseLateral2 = appliedLateralImpulse2;
-		
 
 		m_pointCache[insertIndex].m_lifeTime = lifeTime;
 #else
 		clearUserCache(m_pointCache[insertIndex]);
 		m_pointCache[insertIndex] = newPoint;
-	
+
 #endif
 	}
 
-	
 	bool validContactDistance(const btManifoldPoint& pt) const
 	{
 		return pt.m_distance1 <= getContactBreakingThreshold();
 	}
 	/// calculated new worldspace coordinates and depth, and reject points that exceed the collision margin
-	void	refreshContactPoints(  const btTransform& trA,const btTransform& trB);
+	void refreshContactPoints(const btTransform& trA, const btTransform& trB);
 
-	
-	SIMD_FORCE_INLINE	void	clearManifold()
+	SIMD_FORCE_INLINE void clearManifold()
 	{
 		int i;
-		for (i=0;i<m_cachedPoints;i++)
+		for (i = 0; i < m_cachedPoints; i++)
 		{
 			clearUserCache(m_pointCache[i]);
 		}
 		m_cachedPoints = 0;
 	}
+};
 
-
-
-}
-;
-
-
-
-
-
-#endif //BT_PERSISTENT_MANIFOLD_H
+#endif  //BT_PERSISTENT_MANIFOLD_H

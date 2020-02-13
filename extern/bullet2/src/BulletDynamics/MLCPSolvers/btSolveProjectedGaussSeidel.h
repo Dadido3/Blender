@@ -17,14 +17,13 @@ subject to the following restrictions:
 #ifndef BT_SOLVE_PROJECTED_GAUSS_SEIDEL_H
 #define BT_SOLVE_PROJECTED_GAUSS_SEIDEL_H
 
-
 #include "btMLCPSolverInterface.h"
 
 ///This solver is mainly for debug/learning purposes: it is functionally equivalent to the btSequentialImpulseConstraintSolver solver, but much slower (it builds the full LCP matrix)
 class btSolveProjectedGaussSeidel : public btMLCPSolverInterface
 {
 public:
-	virtual bool solveMLCP(const btMatrixXu & A, const btVectorXu & b, btVectorXu& x, const btVectorXu & lo,const btVectorXu & hi,const btAlignedObjectArray<int>& limitDependency, int numIterations, bool useSparsity = true)
+	virtual bool solveMLCP(const btMatrixXu& A, const btVectorXu& b, btVectorXu& x, const btVectorXu& lo, const btVectorXu& hi, const btAlignedObjectArray<int>& limitDependency, int numIterations, bool useSparsity = true)
 	{
 		if (!A.rows())
 			return true;
@@ -35,52 +34,52 @@ public:
 		btAssert(A.rows() == b.rows());
 
 		int i, j, numRows = A.rows();
-	
+
 		float delta;
 
-		for (int k = 0; k <numIterations; k++)
+		for (int k = 0; k < numIterations; k++)
 		{
-			for (i = 0; i <numRows; i++)
+			for (i = 0; i < numRows; i++)
 			{
 				delta = 0.0f;
 				if (useSparsity)
 				{
-					for (int h=0;h<A.m_rowNonZeroElements1[i].size();h++)
+					for (int h = 0; h < A.m_rowNonZeroElements1[i].size(); h++)
 					{
 						int j = A.m_rowNonZeroElements1[i][h];
-						if (j != i)//skip main diagonal
+						if (j != i)  //skip main diagonal
 						{
-							delta += A(i,j) * x[j];
+							delta += A(i, j) * x[j];
 						}
 					}
-				} else
+				}
+				else
 				{
-					for (j = 0; j <i; j++) 
-						delta += A(i,j) * x[j];
-					for (j = i+1; j<numRows; j++) 
-						delta += A(i,j) * x[j];
+					for (j = 0; j < i; j++)
+						delta += A(i, j) * x[j];
+					for (j = i + 1; j < numRows; j++)
+						delta += A(i, j) * x[j];
 				}
 
-				float aDiag = A(i,i);
-				x [i] = (b [i] - delta) / aDiag;
+				float aDiag = A(i, i);
+				x[i] = (b[i] - delta) / aDiag;
 				float s = 1.f;
 
-				if (limitDependency[i]>=0)
+				if (limitDependency[i] >= 0)
 				{
 					s = x[limitDependency[i]];
-					if (s<0)
-						s=1;
+					if (s < 0)
+						s = 1;
 				}
-			
-				if (x[i]<lo[i]*s)
-					x[i]=lo[i]*s;
-				if (x[i]>hi[i]*s)
-					x[i]=hi[i]*s;
+
+				if (x[i] < lo[i] * s)
+					x[i] = lo[i] * s;
+				if (x[i] > hi[i] * s)
+					x[i] = hi[i] * s;
 			}
 		}
 		return true;
 	}
-
 };
 
-#endif //BT_SOLVE_PROJECTED_GAUSS_SEIDEL_H
+#endif  //BT_SOLVE_PROJECTED_GAUSS_SEIDEL_H
