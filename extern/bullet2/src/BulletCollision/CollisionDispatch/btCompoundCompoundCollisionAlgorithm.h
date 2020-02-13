@@ -33,7 +33,7 @@ class btDispatcher;
 class btCollisionObject;
 
 class btCollisionShape;
-typedef bool (*btShapePairCallback)(const btCollisionShape* pShape0, const btCollisionShape* pShape1);
+
 extern btShapePairCallback gCompoundCompoundChildShapePairCallback;
 
 /// btCompoundCompoundCollisionAlgorithm  supports collision between two btCompoundCollisionShape shapes

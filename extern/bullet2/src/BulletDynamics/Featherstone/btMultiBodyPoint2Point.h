@@ -22,7 +22,8 @@ subject to the following restrictions:
 
 //#define BTMBP2PCONSTRAINT_BLOCK_ANGULAR_MOTION_TEST
 
-class btMultiBodyPoint2Point : public btMultiBodyConstraint
+ATTRIBUTE_ALIGNED16(class)
+btMultiBodyPoint2Point : public btMultiBodyConstraint
 {
 protected:
 	btRigidBody* m_rigidBodyA;
@@ -31,8 +32,10 @@ protected:
 	btVector3 m_pivotInB;
 
 public:
-	btMultiBodyPoint2Point(btMultiBody* body, int link, btRigidBody* bodyB, const btVector3& pivotInA, const btVector3& pivotInB);
-	btMultiBodyPoint2Point(btMultiBody* bodyA, int linkA, btMultiBody* bodyB, int linkB, const btVector3& pivotInA, const btVector3& pivotInB);
+	BT_DECLARE_ALIGNED_ALLOCATOR();
+
+	btMultiBodyPoint2Point(btMultiBody * body, int link, btRigidBody* bodyB, const btVector3& pivotInA, const btVector3& pivotInB);
+	btMultiBodyPoint2Point(btMultiBody * bodyA, int linkA, btMultiBody* bodyB, int linkB, const btVector3& pivotInA, const btVector3& pivotInB);
 
 	virtual ~btMultiBodyPoint2Point();
 
@@ -41,8 +44,8 @@ public:
 	virtual int getIslandIdA() const;
 	virtual int getIslandIdB() const;
 
-	virtual void createConstraintRows(btMultiBodyConstraintArray& constraintRows,
-									  btMultiBodyJacobianData& data,
+	virtual void createConstraintRows(btMultiBodyConstraintArray & constraintRows,
+									  btMultiBodyJacobianData & data,
 									  const btContactSolverInfo& infoGlobal);
 
 	const btVector3& getPivotInB() const
@@ -50,12 +53,12 @@ public:
 		return m_pivotInB;
 	}
 
-	void setPivotInB(const btVector3& pivotInB)
+	virtual void setPivotInB(const btVector3& pivotInB)
 	{
 		m_pivotInB = pivotInB;
 	}
 
-	virtual void debugDraw(class btIDebugDraw* drawer);
+	virtual void debugDraw(class btIDebugDraw * drawer);
 };
 
 #endif  //BT_MULTIBODY_POINT2POINT_H

@@ -15,9 +15,9 @@
  This source version has been altered.
  */
 
-//#if defined (_WIN32) || defined (__i386__)
-//#define BT_USE_SSE_IN_API
-//#endif
+#if defined(_WIN32) || defined(__i386__)
+#define BT_USE_SSE_IN_API
+#endif
 
 #include "btVector3.h"
 
@@ -319,8 +319,8 @@ long _maxdot_large(const float *vv, const float *vec, unsigned long count, float
          add     $16, %[byteIndex]                           // advance loop counter\n\
          jnz     0b                                          \n\
      "
-			: [ max ] "+x"(max), [ t0 ] "=&x"(t0), [ t1 ] "=&x"(t1), [ t2 ] "=&x"(t2), [ t3 ] "=&x"(t3), [ t4 ] "=&x"(t4), [ byteIndex ] "+r"(byteIndex)
-			: [ vLo ] "x"(vLo), [ vHi ] "x"(vHi), [ vertices ] "r"(vertices), [ sap ] "r"(sap)
+			: [max] "+x"(max), [t0] "=&x"(t0), [t1] "=&x"(t1), [t2] "=&x"(t2), [t3] "=&x"(t3), [t4] "=&x"(t4), [byteIndex] "+r"(byteIndex)
+			: [vLo] "x"(vLo), [vHi] "x"(vHi), [vertices] "r"(vertices), [sap] "r"(sap)
 			: "memory", "cc");
 		index += localCount / 4;
 #else
@@ -712,8 +712,8 @@ long _mindot_large(const float *vv, const float *vec, unsigned long count, float
              add     $16, %[byteIndex]                           // advance loop counter\n\
              jnz     0b                                          \n\
              "
-			: [ min ] "+x"(min), [ t0 ] "=&x"(t0), [ t1 ] "=&x"(t1), [ t2 ] "=&x"(t2), [ t3 ] "=&x"(t3), [ t4 ] "=&x"(t4), [ byteIndex ] "+r"(byteIndex)
-			: [ vLo ] "x"(vLo), [ vHi ] "x"(vHi), [ vertices ] "r"(vertices), [ sap ] "r"(sap)
+			: [min] "+x"(min), [t0] "=&x"(t0), [t1] "=&x"(t1), [t2] "=&x"(t2), [t3] "=&x"(t3), [t4] "=&x"(t4), [byteIndex] "+r"(byteIndex)
+			: [vLo] "x"(vLo), [vHi] "x"(vHi), [vertices] "r"(vertices), [sap] "r"(sap)
 			: "memory", "cc");
 		index += localCount / 4;
 #else

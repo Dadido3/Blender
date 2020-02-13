@@ -292,8 +292,8 @@ btCollisionShape* btCollisionWorldImporter::convertCollisionShape(btCollisionSha
 			}
 			break;
 		}
-#endif  //SUPPORT_GIMPACT_SHAPE_IMPORT                                                                        \
-		//The btCapsuleShape* API has issue passing the margin/scaling/halfextents unmodified through the API \
+#endif  //SUPPORT_GIMPACT_SHAPE_IMPORT
+		//The btCapsuleShape* API has issue passing the margin/scaling/halfextents unmodified through the API
 		//so deal with this
 		case CAPSULE_SHAPE_PROXYTYPE:
 		{
@@ -551,9 +551,13 @@ btCollisionShape* btCollisionWorldImporter::convertCollisionShape(btCollisionSha
 			btCompoundShapeData* compoundData = (btCompoundShapeData*)shapeData;
 			btCompoundShape* compoundShape = createCompoundShape();
 
+			//btCompoundShapeChildData* childShapeDataArray = &compoundData->m_childShapePtr[0];
+
 			btAlignedObjectArray<btCollisionShape*> childShapes;
 			for (int i = 0; i < compoundData->m_numChildShapes; i++)
 			{
+				//btCompoundShapeChildData* ptr = &compoundData->m_childShapePtr[i];
+
 				btCollisionShapeData* cd = compoundData->m_childShapePtr[i].m_childShape;
 
 				btCollisionShape* childShape = convertCollisionShape(cd);

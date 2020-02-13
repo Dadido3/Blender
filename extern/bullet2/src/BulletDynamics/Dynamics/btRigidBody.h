@@ -53,7 +53,7 @@ enum btRigidBodyFlags
 ///There are 3 types of rigid bodies:
 ///- A) Dynamic rigid bodies, with positive mass. Motion is controlled by rigid body dynamics.
 ///- B) Fixed objects with zero mass. They are not moving (basically collision objects)
-///- C) Kinematic objects, which are objects without mass, but the user can move them. There is on-way interaction, and Bullet calculates a velocity based on the timestep and previous and current world transform.
+///- C) Kinematic objects, which are objects without mass, but the user can move them. There is one-way interaction, and Bullet calculates a velocity based on the timestep and previous and current world transform.
 ///Bullet automatically deactivates dynamic rigid bodies, when the velocity is below a threshold for a given time.
 ///Deactivated (sleeping) rigid bodies don't take any processing time, except a minor broadphase collision detection impact (to allow active objects to activate/wake up sleeping objects)
 class btRigidBody : public btCollisionObject
@@ -125,6 +125,8 @@ public:
 		///the m_rollingFriction prevents rounded shapes, such as spheres, cylinders and capsules from rolling forever.
 		///See Bullet/Demos/RollingFrictionDemo for usage
 		btScalar m_rollingFriction;
+		btScalar m_spinningFriction;  //torsional friction around contact normal
+
 		///best simulation results using zero restitution.
 		btScalar m_restitution;
 
@@ -147,6 +149,7 @@ public:
 																																									   m_angularDamping(btScalar(0.)),
 																																									   m_friction(btScalar(0.5)),
 																																									   m_rollingFriction(btScalar(0)),
+																																									   m_spinningFriction(btScalar(0)),
 																																									   m_restitution(btScalar(0.)),
 																																									   m_linearSleepingThreshold(btScalar(0.8)),
 																																									   m_angularSleepingThreshold(btScalar(1.f)),
@@ -202,6 +205,8 @@ public:
 	void saveKinematicState(btScalar step);
 
 	void applyGravity();
+    
+    void clearGravity();
 
 	void setGravity(const btVector3& acceleration);
 
@@ -256,6 +261,7 @@ public:
 		m_invMass = m_linearFactor * m_inverseMass;
 	}
 	btScalar getInvMass() const { return m_inverseMass; }
+	btScalar getMass() const { return m_inverseMass == btScalar(0.) ? btScalar(0.) : btScalar(1.0) / m_inverseMass; }
 	const btMatrix3x3& getInvInertiaTensorWorld() const
 	{
 		return m_invInertiaTensorWorld;
@@ -328,6 +334,48 @@ public:
 			}
 		}
 	}
+    
+    void applyPushImpulse(const btVector3& impulse, const btVector3& rel_pos)
+    {
+        if (m_inverseMass != btScalar(0.))
+        {
+            applyCentralPushImpulse(impulse);
+            if (m_angularFactor)
+            {
+                applyTorqueTurnImpulse(rel_pos.cross(impulse * m_linearFactor));
+            }
+        }
+    }
+    
+    btVector3 getPushVelocity()
+    {
+        return m_pushVelocity;
+    }
+    
+    btVector3 getTurnVelocity()
+    {
+        return m_turnVelocity;
+    }
+    
+    void setPushVelocity(const btVector3& v)
+    {
+        m_pushVelocity = v;
+    }
+    
+    void setTurnVelocity(const btVector3& v)
+    {
+        m_turnVelocity = v;
+    }
+    
+    void applyCentralPushImpulse(const btVector3& impulse)
+    {
+        m_pushVelocity += impulse * m_linearFactor * m_inverseMass;
+    }
+    
+    void applyTorqueTurnImpulse(const btVector3& torque)
+    {
+        m_turnVelocity += m_invInertiaTensorWorld * torque * m_angularFactor;
+    }
 
 	void clearForces()
 	{
@@ -491,8 +539,6 @@ public:
 	{
 		return (getBroadphaseProxy() != 0);
 	}
-
-	virtual bool checkCollideWithOverride(const btCollisionObject* co) const;
 
 	void addConstraintRef(btTypedConstraint* c);
 	void removeConstraintRef(btTypedConstraint* c);

@@ -39,10 +39,12 @@ struct btSimplePair
 
 typedef btAlignedObjectArray<btSimplePair> btSimplePairArray;
 
+#ifdef BT_DEBUG_COLLISION_PAIRS
 extern int gOverlappingSimplePairs;
 extern int gRemoveSimplePairs;
 extern int gAddedSimplePairs;
 extern int gFindSimplePairs;
+#endif  //BT_DEBUG_COLLISION_PAIRS
 
 class btHashedSimplePairCache
 {
@@ -64,7 +66,9 @@ public:
 	// no new pair is created and the old one is returned.
 	virtual btSimplePair* addOverlappingPair(int indexA, int indexB)
 	{
+#ifdef BT_DEBUG_COLLISION_PAIRS
 		gAddedSimplePairs++;
+#endif
 
 		return internalAddPair(indexA, indexB);
 	}
@@ -110,7 +114,7 @@ private:
 
 	SIMD_FORCE_INLINE unsigned int getHash(unsigned int indexA, unsigned int indexB)
 	{
-		int key = static_cast<int>(((unsigned int)indexA) | (((unsigned int)indexB) << 16));
+		unsigned int key = indexA | (indexB << 16);
 		// Thomas Wang's hash
 
 		key += ~(key << 15);
@@ -119,7 +123,7 @@ private:
 		key ^= (key >> 6);
 		key += ~(key << 11);
 		key ^= (key >> 16);
-		return static_cast<unsigned int>(key);
+		return key;
 	}
 
 	SIMD_FORCE_INLINE btSimplePair* internalFindPair(int proxyIdA, int proxyIdB, int hash)

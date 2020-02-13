@@ -22,7 +22,12 @@ subject to the following restrictions:
 
 btMultiBodyJointMotor::btMultiBodyJointMotor(btMultiBody* body, int link, btScalar desiredVelocity, btScalar maxMotorImpulse)
 	: btMultiBodyConstraint(body, body, link, body->getLink(link).m_parent, 1, true),
-	  m_desiredVelocity(desiredVelocity)
+	  m_desiredVelocity(desiredVelocity),
+	  m_desiredPosition(0),
+	  m_kd(1.),
+	  m_kp(0),
+	  m_erp(1),
+	  m_rhsClamp(SIMD_INFINITY)
 {
 	m_maxAppliedImpulse = maxMotorImpulse;
 	// the data.m_jacobians never change, so may as well
@@ -47,7 +52,12 @@ void btMultiBodyJointMotor::finalizeMultiDof()
 btMultiBodyJointMotor::btMultiBodyJointMotor(btMultiBody* body, int link, int linkDoF, btScalar desiredVelocity, btScalar maxMotorImpulse)
 	//:btMultiBodyConstraint(body,0,link,-1,1,true),
 	: btMultiBodyConstraint(body, body, link, body->getLink(link).m_parent, 1, true),
-	  m_desiredVelocity(desiredVelocity)
+	  m_desiredVelocity(desiredVelocity),
+	  m_desiredPosition(0),
+	  m_kd(1.),
+	  m_kp(0),
+	  m_erp(1),
+	  m_rhsClamp(SIMD_INFINITY)
 {
 	btAssert(linkDoF < body->getLink(link).m_dofCount);
 
@@ -59,28 +69,36 @@ btMultiBodyJointMotor::~btMultiBodyJointMotor()
 
 int btMultiBodyJointMotor::getIslandIdA() const
 {
-	btMultiBodyLinkCollider* col = m_bodyA->getBaseCollider();
-	if (col)
-		return col->getIslandTag();
-	for (int i = 0; i < m_bodyA->getNumLinks(); i++)
+	if (this->m_linkA < 0)
 	{
-		if (m_bodyA->getLink(i).m_collider)
-			return m_bodyA->getLink(i).m_collider->getIslandTag();
+		btMultiBodyLinkCollider* col = m_bodyA->getBaseCollider();
+		if (col)
+			return col->getIslandTag();
+	}
+	else
+	{
+		if (m_bodyA->getLink(m_linkA).m_collider)
+		{
+			return m_bodyA->getLink(m_linkA).m_collider->getIslandTag();
+		}
 	}
 	return -1;
 }
 
 int btMultiBodyJointMotor::getIslandIdB() const
 {
-	btMultiBodyLinkCollider* col = m_bodyB->getBaseCollider();
-	if (col)
-		return col->getIslandTag();
-
-	for (int i = 0; i < m_bodyB->getNumLinks(); i++)
+	if (m_linkB < 0)
 	{
-		col = m_bodyB->getLink(i).m_collider;
+		btMultiBodyLinkCollider* col = m_bodyB->getBaseCollider();
 		if (col)
 			return col->getIslandTag();
+	}
+	else
+	{
+		if (m_bodyB->getLink(m_linkB).m_collider)
+		{
+			return m_bodyB->getLink(m_linkB).m_collider->getIslandTag();
+		}
 	}
 	return -1;
 }
@@ -101,6 +119,9 @@ void btMultiBodyJointMotor::createConstraintRows(btMultiBodyConstraintArray& con
 	if (m_numDofsFinalized != m_jacSizeBoth)
 		return;
 
+	if (m_maxAppliedImpulse == 0.f)
+		return;
+
 	const btScalar posError = 0;
 	const btVector3 dummy(0, 0, 0);
 
@@ -108,7 +129,23 @@ void btMultiBodyJointMotor::createConstraintRows(btMultiBodyConstraintArray& con
 	{
 		btMultiBodySolverConstraint& constraintRow = constraintRows.expandNonInitializing();
 
-		fillMultiBodyConstraint(constraintRow, data, jacobianA(row), jacobianB(row), dummy, dummy, dummy, posError, infoGlobal, -m_maxAppliedImpulse, m_maxAppliedImpulse, 1, false, m_desiredVelocity);
+		int dof = 0;
+		btScalar currentPosition = m_bodyA->getJointPosMultiDof(m_linkA)[dof];
+		btScalar currentVelocity = m_bodyA->getJointVelMultiDof(m_linkA)[dof];
+		btScalar positionStabiliationTerm = m_erp * (m_desiredPosition - currentPosition) / infoGlobal.m_timeStep;
+
+		btScalar velocityError = (m_desiredVelocity - currentVelocity);
+		btScalar rhs = m_kp * positionStabiliationTerm + currentVelocity + m_kd * velocityError;
+		if (rhs > m_rhsClamp)
+		{
+			rhs = m_rhsClamp;
+		}
+		if (rhs < -m_rhsClamp)
+		{
+			rhs = -m_rhsClamp;
+		}
+
+		fillMultiBodyConstraint(constraintRow, data, jacobianA(row), jacobianB(row), dummy, dummy, dummy, dummy, posError, infoGlobal, -m_maxAppliedImpulse, m_maxAppliedImpulse, false, 1, false, rhs);
 		constraintRow.m_orgConstraint = this;
 		constraintRow.m_orgDofIndex = row;
 		{

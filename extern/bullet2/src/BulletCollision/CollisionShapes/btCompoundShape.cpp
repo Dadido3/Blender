@@ -199,7 +199,7 @@ void btCompoundShape::calculateLocalInertia(btScalar mass, btVector3& inertia) c
 	inertia[2] = mass / (btScalar(12.0)) * (lx * lx + ly * ly);
 }
 
-void btCompoundShape::calculatePrincipalAxisTransform(btScalar* masses, btTransform& principal, btVector3& inertia) const
+void btCompoundShape::calculatePrincipalAxisTransform(const btScalar* masses, btTransform& principal, btVector3& inertia) const
 {
 	int n = m_children.size();
 

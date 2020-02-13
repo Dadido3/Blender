@@ -19,6 +19,7 @@ Written by: Marcus Hennix
 #include "BulletDynamics/Dynamics/btRigidBody.h"
 #include "LinearMath/btTransformUtil.h"
 #include "LinearMath/btMinMax.h"
+#include <cmath>
 #include <new>
 
 //#define CONETWIST_USE_OBSOLETE_SOLVER true
@@ -618,7 +619,7 @@ void btConeTwistConstraint::calcAngleInfo2(const btTransform& transA, const btTr
 		btTransform trDeltaAB = trB * trPose * trA.inverse();
 		btQuaternion qDeltaAB = trDeltaAB.getRotation();
 		btVector3 swingAxis = btVector3(qDeltaAB.x(), qDeltaAB.y(), qDeltaAB.z());
-		float swingAxisLen2 = swingAxis.length2();
+		btScalar swingAxisLen2 = swingAxis.length2();
 		if (btFuzzyZero(swingAxisLen2))
 		{
 			return;
@@ -842,7 +843,7 @@ void btConeTwistConstraint::computeConeLimitInfo(const btQuaternion& qCone,
 			btScalar norm = 1 / (m_swingSpan2 * m_swingSpan2);
 			norm += surfaceSlope2 / (m_swingSpan1 * m_swingSpan1);
 			btScalar swingLimit2 = (1 + surfaceSlope2) / norm;
-			swingLimit = sqrt(swingLimit2);
+			swingLimit = std::sqrt(swingLimit2);
 		}
 
 		// test!
@@ -880,14 +881,14 @@ btVector3 btConeTwistConstraint::GetPointForAngle(btScalar fAngleInRadians, btSc
 	//  a^2   b^2
 	// Do the math and it should be clear.
 
-	float swingLimit = m_swingSpan1;  // if xEllipse == 0, just use axis b (1)
+	btScalar swingLimit = m_swingSpan1;  // if xEllipse == 0, just use axis b (1)
 	if (fabs(xEllipse) > SIMD_EPSILON)
 	{
 		btScalar surfaceSlope2 = (yEllipse * yEllipse) / (xEllipse * xEllipse);
 		btScalar norm = 1 / (m_swingSpan2 * m_swingSpan2);
 		norm += surfaceSlope2 / (m_swingSpan1 * m_swingSpan1);
 		btScalar swingLimit2 = (1 + surfaceSlope2) / norm;
-		swingLimit = sqrt(swingLimit2);
+		swingLimit = std::sqrt(swingLimit2);
 	}
 
 	// convert into point in constraint space:

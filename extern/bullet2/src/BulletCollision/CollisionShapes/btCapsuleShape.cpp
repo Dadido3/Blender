@@ -15,11 +15,11 @@ subject to the following restrictions:
 
 #include "btCapsuleShape.h"
 
-#include "BulletCollision/CollisionShapes/btCollisionMargin.h"
 #include "LinearMath/btQuaternion.h"
 
 btCapsuleShape::btCapsuleShape(btScalar radius, btScalar height) : btConvexInternalShape()
 {
+	m_collisionMargin = radius;
 	m_shapeType = CAPSULE_SHAPE_PROXYTYPE;
 	m_upAxis = 1;
 	m_implicitShapeDimensions.setValue(radius, 0.5f * height, radius);
@@ -46,13 +46,11 @@ btVector3 btCapsuleShape::localGetSupportingVertexWithoutMargin(const btVector3&
 	btVector3 vtx;
 	btScalar newDot;
 
-	btScalar radius = getRadius();
-
 	{
 		btVector3 pos(0, 0, 0);
 		pos[getUpAxis()] = getHalfHeight();
 
-		vtx = pos + vec * (radius)-vec * getMargin();
+		vtx = pos;
 		newDot = vec.dot(vtx);
 		if (newDot > maxDot)
 		{
@@ -64,7 +62,7 @@ btVector3 btCapsuleShape::localGetSupportingVertexWithoutMargin(const btVector3&
 		btVector3 pos(0, 0, 0);
 		pos[getUpAxis()] = -getHalfHeight();
 
-		vtx = pos + vec * (radius)-vec * getMargin();
+		vtx = pos;
 		newDot = vec.dot(vtx);
 		if (newDot > maxDot)
 		{
@@ -78,8 +76,6 @@ btVector3 btCapsuleShape::localGetSupportingVertexWithoutMargin(const btVector3&
 
 void btCapsuleShape::batchedUnitVectorGetSupportingVertexWithoutMargin(const btVector3* vectors, btVector3* supportVerticesOut, int numVectors) const
 {
-	btScalar radius = getRadius();
-
 	for (int j = 0; j < numVectors; j++)
 	{
 		btScalar maxDot(btScalar(-BT_LARGE_FLOAT));
@@ -90,7 +86,7 @@ void btCapsuleShape::batchedUnitVectorGetSupportingVertexWithoutMargin(const btV
 		{
 			btVector3 pos(0, 0, 0);
 			pos[getUpAxis()] = getHalfHeight();
-			vtx = pos + vec * (radius)-vec * getMargin();
+			vtx = pos;
 			newDot = vec.dot(vtx);
 			if (newDot > maxDot)
 			{
@@ -101,7 +97,7 @@ void btCapsuleShape::batchedUnitVectorGetSupportingVertexWithoutMargin(const btV
 		{
 			btVector3 pos(0, 0, 0);
 			pos[getUpAxis()] = -getHalfHeight();
-			vtx = pos + vec * (radius)-vec * getMargin();
+			vtx = pos;
 			newDot = vec.dot(vtx);
 			if (newDot > maxDot)
 			{
@@ -124,11 +120,9 @@ void btCapsuleShape::calculateLocalInertia(btScalar mass, btVector3& inertia) co
 	btVector3 halfExtents(radius, radius, radius);
 	halfExtents[getUpAxis()] += getHalfHeight();
 
-	btScalar margin = CONVEX_DISTANCE_MARGIN;
-
-	btScalar lx = btScalar(2.) * (halfExtents[0] + margin);
-	btScalar ly = btScalar(2.) * (halfExtents[1] + margin);
-	btScalar lz = btScalar(2.) * (halfExtents[2] + margin);
+	btScalar lx = btScalar(2.) * (halfExtents[0]);
+	btScalar ly = btScalar(2.) * (halfExtents[1]);
+	btScalar lz = btScalar(2.) * (halfExtents[2]);
 	const btScalar x2 = lx * lx;
 	const btScalar y2 = ly * ly;
 	const btScalar z2 = lz * lz;
@@ -141,12 +135,14 @@ void btCapsuleShape::calculateLocalInertia(btScalar mass, btVector3& inertia) co
 
 btCapsuleShapeX::btCapsuleShapeX(btScalar radius, btScalar height)
 {
+	m_collisionMargin = radius;
 	m_upAxis = 0;
 	m_implicitShapeDimensions.setValue(0.5f * height, radius, radius);
 }
 
 btCapsuleShapeZ::btCapsuleShapeZ(btScalar radius, btScalar height)
 {
+	m_collisionMargin = radius;
 	m_upAxis = 2;
 	m_implicitShapeDimensions.setValue(radius, radius, 0.5f * height);
 }

@@ -22,7 +22,8 @@ subject to the following restrictions:
 
 enum btMultiBodyLinkFlags
 {
-	BT_MULTIBODYLINKFLAGS_DISABLE_PARENT_COLLISION = 1
+	BT_MULTIBODYLINKFLAGS_DISABLE_PARENT_COLLISION = 1,
+	BT_MULTIBODYLINKFLAGS_DISABLE_ALL_PARENT_COLLISION = 2,
 };
 
 //both defines are now permanently enabled
@@ -91,9 +92,18 @@ struct btMultibodyLink
 	//			   m_axesBottom[1][2] = unit vectors along the translational axes on that plane
 	btSpatialMotionVector m_axes[6];
 	void setAxisTop(int dof, const btVector3 &axis) { m_axes[dof].m_topVec = axis; }
-	void setAxisBottom(int dof, const btVector3 &axis) { m_axes[dof].m_bottomVec = axis; }
-	void setAxisTop(int dof, const btScalar &x, const btScalar &y, const btScalar &z) { m_axes[dof].m_topVec.setValue(x, y, z); }
-	void setAxisBottom(int dof, const btScalar &x, const btScalar &y, const btScalar &z) { m_axes[dof].m_bottomVec.setValue(x, y, z); }
+	void setAxisBottom(int dof, const btVector3 &axis)
+	{
+		m_axes[dof].m_bottomVec = axis;
+	}
+	void setAxisTop(int dof, const btScalar &x, const btScalar &y, const btScalar &z)
+	{
+		m_axes[dof].m_topVec.setValue(x, y, z);
+	}
+	void setAxisBottom(int dof, const btScalar &x, const btScalar &y, const btScalar &z)
+	{
+		m_axes[dof].m_bottomVec.setValue(x, y, z);
+	}
 	const btVector3 &getAxisTop(int dof) const { return m_axes[dof].m_topVec; }
 	const btVector3 &getAxisBottom(int dof) const { return m_axes[dof].m_bottomVec; }
 
@@ -101,6 +111,10 @@ struct btMultibodyLink
 
 	btQuaternion m_cachedRotParentToThis;  // rotates vectors in parent frame to vectors in local frame
 	btVector3 m_cachedRVector;             // vector from COM of parent to COM of this link, in local frame.
+    
+    // predicted verstion
+    btQuaternion m_cachedRotParentToThis_interpolate;  // rotates vectors in parent frame to vectors in local frame
+    btVector3 m_cachedRVector_interpolate;             // vector from COM of parent to COM of this link, in local frame.
 
 	btVector3 m_appliedForce;   // In WORLD frame
 	btVector3 m_appliedTorque;  // In WORLD frame
@@ -109,6 +123,7 @@ struct btMultibodyLink
 	btVector3 m_appliedConstraintTorque;  // In WORLD frame
 
 	btScalar m_jointPos[7];
+    btScalar m_jointPos_interpolate[7];
 
 	//m_jointTorque is the joint torque applied by the user using 'addJointTorque'.
 	//It gets set to zero after each internal stepSimulation call
@@ -127,6 +142,14 @@ struct btMultibodyLink
 
 	const char *m_linkName;   //m_linkName memory needs to be managed by the developer/user!
 	const char *m_jointName;  //m_jointName memory needs to be managed by the developer/user!
+	const void *m_userPtr;    //m_userPtr ptr needs to be managed by the developer/user!
+
+	btScalar m_jointDamping;      //todo: implement this internally. It is unused for now, it is set by a URDF loader. User can apply manual damping.
+	btScalar m_jointFriction;     //todo: implement this internally. It is unused for now, it is set by a URDF loader. User can apply manual friction using a velocity motor.
+	btScalar m_jointLowerLimit;   //todo: implement this internally. It is unused for now, it is set by a URDF loader.
+	btScalar m_jointUpperLimit;   //todo: implement this internally. It is unused for now, it is set by a URDF loader.
+	btScalar m_jointMaxForce;     //todo: implement this internally. It is unused for now, it is set by a URDF loader.
+	btScalar m_jointMaxVelocity;  //todo: implement this internally. It is unused for now, it is set by a URDF loader.
 
 	// ctor: set some sensible defaults
 	btMultibodyLink()
@@ -134,6 +157,7 @@ struct btMultibodyLink
 		  m_parent(-1),
 		  m_zeroRotParentToThis(0, 0, 0, 1),
 		  m_cachedRotParentToThis(0, 0, 0, 1),
+          m_cachedRotParentToThis_interpolate(0, 0, 0, 1),
 		  m_collider(0),
 		  m_flags(0),
 		  m_dofCount(0),
@@ -141,7 +165,14 @@ struct btMultibodyLink
 		  m_jointType(btMultibodyLink::eInvalid),
 		  m_jointFeedback(0),
 		  m_linkName(0),
-		  m_jointName(0)
+		  m_jointName(0),
+		  m_userPtr(0),
+		  m_jointDamping(0),
+		  m_jointFriction(0),
+		  m_jointLowerLimit(0),
+		  m_jointUpperLimit(0),
+		  m_jointMaxForce(0),
+		  m_jointMaxVelocity(0)
 	{
 		m_inertiaLocal.setValue(1, 1, 1);
 		setAxisTop(0, 0., 0., 0.);
@@ -149,8 +180,11 @@ struct btMultibodyLink
 		m_dVector.setValue(0, 0, 0);
 		m_eVector.setValue(0, 0, 0);
 		m_cachedRVector.setValue(0, 0, 0);
+        m_cachedRVector_interpolate.setValue(0, 0, 0);
 		m_appliedForce.setValue(0, 0, 0);
 		m_appliedTorque.setValue(0, 0, 0);
+		m_appliedConstraintForce.setValue(0, 0, 0);
+		m_appliedConstraintTorque.setValue(0, 0, 0);
 		//
 		m_jointPos[0] = m_jointPos[1] = m_jointPos[2] = m_jointPos[4] = m_jointPos[5] = m_jointPos[6] = 0.f;
 		m_jointPos[3] = 1.f;  //"quat.w"
@@ -161,42 +195,43 @@ struct btMultibodyLink
 	// routine to update m_cachedRotParentToThis and m_cachedRVector
 	void updateCacheMultiDof(btScalar *pq = 0)
 	{
-		btScalar *pJointPos = (pq ? pq : &m_jointPos[0]);
-
+        btScalar *pJointPos = (pq ? pq : &m_jointPos[0]);
+        btQuaternion& cachedRot = m_cachedRotParentToThis;
+        btVector3& cachedVector = m_cachedRVector;
 		switch (m_jointType)
 		{
 			case eRevolute:
 			{
-				m_cachedRotParentToThis = btQuaternion(getAxisTop(0), -pJointPos[0]) * m_zeroRotParentToThis;
-				m_cachedRVector = m_dVector + quatRotate(m_cachedRotParentToThis, m_eVector);
+				cachedRot = btQuaternion(getAxisTop(0), -pJointPos[0]) * m_zeroRotParentToThis;
+				cachedVector = m_dVector + quatRotate(m_cachedRotParentToThis, m_eVector);
 
 				break;
 			}
 			case ePrismatic:
 			{
 				// m_cachedRotParentToThis never changes, so no need to update
-				m_cachedRVector = m_dVector + quatRotate(m_cachedRotParentToThis, m_eVector) + pJointPos[0] * getAxisBottom(0);
+				cachedVector = m_dVector + quatRotate(m_cachedRotParentToThis, m_eVector) + pJointPos[0] * getAxisBottom(0);
 
 				break;
 			}
 			case eSpherical:
 			{
-				m_cachedRotParentToThis = btQuaternion(pJointPos[0], pJointPos[1], pJointPos[2], -pJointPos[3]) * m_zeroRotParentToThis;
-				m_cachedRVector = m_dVector + quatRotate(m_cachedRotParentToThis, m_eVector);
+				cachedRot = btQuaternion(pJointPos[0], pJointPos[1], pJointPos[2], -pJointPos[3]) * m_zeroRotParentToThis;
+				cachedVector = m_dVector + quatRotate(cachedRot, m_eVector);
 
 				break;
 			}
 			case ePlanar:
 			{
-				m_cachedRotParentToThis = btQuaternion(getAxisTop(0), -pJointPos[0]) * m_zeroRotParentToThis;
-				m_cachedRVector = quatRotate(btQuaternion(getAxisTop(0), -pJointPos[0]), pJointPos[1] * getAxisBottom(1) + pJointPos[2] * getAxisBottom(2)) + quatRotate(m_cachedRotParentToThis, m_eVector);
+				cachedRot = btQuaternion(getAxisTop(0), -pJointPos[0]) * m_zeroRotParentToThis;
+				cachedVector = quatRotate(btQuaternion(getAxisTop(0), -pJointPos[0]), pJointPos[1] * getAxisBottom(1) + pJointPos[2] * getAxisBottom(2)) + quatRotate(cachedRot, m_eVector);
 
 				break;
 			}
 			case eFixed:
 			{
-				m_cachedRotParentToThis = m_zeroRotParentToThis;
-				m_cachedRVector = m_dVector + quatRotate(m_cachedRotParentToThis, m_eVector);
+				cachedRot = m_zeroRotParentToThis;
+				cachedVector = m_dVector + quatRotate(cachedRot, m_eVector);
 
 				break;
 			}
@@ -206,7 +241,60 @@ struct btMultibodyLink
 				btAssert(0);
 			}
 		}
+        m_cachedRotParentToThis_interpolate = m_cachedRotParentToThis;
+        m_cachedRVector_interpolate = m_cachedRVector;
 	}
+    
+    void updateInterpolationCacheMultiDof()
+    {
+        btScalar *pJointPos = &m_jointPos_interpolate[0];
+        
+        btQuaternion& cachedRot = m_cachedRotParentToThis_interpolate;
+        btVector3& cachedVector = m_cachedRVector_interpolate;
+        switch (m_jointType)
+        {
+            case eRevolute:
+            {
+                cachedRot = btQuaternion(getAxisTop(0), -pJointPos[0]) * m_zeroRotParentToThis;
+                cachedVector = m_dVector + quatRotate(m_cachedRotParentToThis, m_eVector);
+                
+                break;
+            }
+            case ePrismatic:
+            {
+                // m_cachedRotParentToThis never changes, so no need to update
+                cachedVector = m_dVector + quatRotate(m_cachedRotParentToThis, m_eVector) + pJointPos[0] * getAxisBottom(0);
+                
+                break;
+            }
+            case eSpherical:
+            {
+                cachedRot = btQuaternion(pJointPos[0], pJointPos[1], pJointPos[2], -pJointPos[3]) * m_zeroRotParentToThis;
+                cachedVector = m_dVector + quatRotate(cachedRot, m_eVector);
+                
+                break;
+            }
+            case ePlanar:
+            {
+                cachedRot = btQuaternion(getAxisTop(0), -pJointPos[0]) * m_zeroRotParentToThis;
+                cachedVector = quatRotate(btQuaternion(getAxisTop(0), -pJointPos[0]), pJointPos[1] * getAxisBottom(1) + pJointPos[2] * getAxisBottom(2)) + quatRotate(cachedRot, m_eVector);
+                
+                break;
+            }
+            case eFixed:
+            {
+                cachedRot = m_zeroRotParentToThis;
+                cachedVector = m_dVector + quatRotate(cachedRot, m_eVector);
+                
+                break;
+            }
+            default:
+            {
+                //invalid type
+                btAssert(0);
+            }
+        }
+    }
 };
 
 #endif  //BT_MULTIBODY_LINK_H

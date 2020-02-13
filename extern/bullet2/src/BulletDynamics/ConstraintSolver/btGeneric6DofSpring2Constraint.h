@@ -105,7 +105,7 @@ public:
 		m_motorCFM = 0.f;
 		m_enableMotor = false;
 		m_targetVelocity = 0;
-		m_maxMotorForce = 0.1f;
+		m_maxMotorForce = 6.0f;
 		m_servoMotor = false;
 		m_servoTarget = 0;
 		m_enableSpring = false;
@@ -264,7 +264,7 @@ enum bt6DofFlags2
 	BT_6DOF_FLAGS_CFM_STOP2 = 1,
 	BT_6DOF_FLAGS_ERP_STOP2 = 2,
 	BT_6DOF_FLAGS_CFM_MOTO2 = 4,
-	BT_6DOF_FLAGS_ERP_MOTO2 = 8
+	BT_6DOF_FLAGS_ERP_MOTO2 = 8,
 };
 #define BT_6DOF_FLAGS_AXIS_SHIFT2 4  // bits per axis
 
@@ -294,7 +294,7 @@ protected:
 	bool m_hasStaticBody;
 	int m_flags;
 
-	btGeneric6DofSpring2Constraint& operator=(btGeneric6DofSpring2Constraint&)
+	btGeneric6DofSpring2Constraint& operator=(const btGeneric6DofSpring2Constraint&)
 	{
 		btAssert(0);
 		return *this;
@@ -311,14 +311,6 @@ protected:
 	int get_limit_motor_info2(btRotationalLimitMotor2 * limot,
 							  const btTransform& transA, const btTransform& transB, const btVector3& linVelA, const btVector3& linVelB, const btVector3& angVelA, const btVector3& angVelB,
 							  btConstraintInfo2* info, int row, btVector3& ax1, int rotational, int rotAllowed = false);
-
-	static btScalar btGetMatrixElem(const btMatrix3x3& mat, int index);
-	static bool matrixToEulerXYZ(const btMatrix3x3& mat, btVector3& xyz);
-	static bool matrixToEulerXZY(const btMatrix3x3& mat, btVector3& xyz);
-	static bool matrixToEulerYXZ(const btMatrix3x3& mat, btVector3& xyz);
-	static bool matrixToEulerYZX(const btMatrix3x3& mat, btVector3& xyz);
-	static bool matrixToEulerZXY(const btMatrix3x3& mat, btVector3& xyz);
-	static bool matrixToEulerZYX(const btMatrix3x3& mat, btVector3& xyz);
 
 public:
 	BT_DECLARE_ALIGNED_ALLOCATOR();
@@ -481,6 +473,14 @@ public:
 	//If no axis is provided, it uses the default axis for this constraint.
 	virtual void setParam(int num, btScalar value, int axis = -1);
 	virtual btScalar getParam(int num, int axis = -1) const;
+
+	static btScalar btGetMatrixElem(const btMatrix3x3& mat, int index);
+	static bool matrixToEulerXYZ(const btMatrix3x3& mat, btVector3& xyz);
+	static bool matrixToEulerXZY(const btMatrix3x3& mat, btVector3& xyz);
+	static bool matrixToEulerYXZ(const btMatrix3x3& mat, btVector3& xyz);
+	static bool matrixToEulerYZX(const btMatrix3x3& mat, btVector3& xyz);
+	static bool matrixToEulerZXY(const btMatrix3x3& mat, btVector3& xyz);
+	static bool matrixToEulerZYX(const btMatrix3x3& mat, btVector3& xyz);
 };
 
 struct btGeneric6DofSpring2ConstraintData
@@ -654,6 +654,11 @@ SIMD_FORCE_INLINE const char* btGeneric6DofSpring2Constraint::serialize(void* da
 	}
 
 	dof->m_rotateOrder = m_rotateOrder;
+
+	dof->m_padding1[0] = 0;
+	dof->m_padding1[1] = 0;
+	dof->m_padding1[2] = 0;
+	dof->m_padding1[3] = 0;
 
 	return btGeneric6DofSpring2ConstraintDataName;
 }

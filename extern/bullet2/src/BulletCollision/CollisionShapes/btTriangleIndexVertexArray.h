@@ -60,7 +60,7 @@ typedef btAlignedObjectArray<btIndexedMesh> IndexedMeshArray;
 
 ///The btTriangleIndexVertexArray allows to access multiple triangle meshes, by indexing into existing triangle/index arrays.
 ///Additional meshes can be added using addIndexedMesh
-///No duplcate is made of the vertex/index data, it only indexes into external vertex/index arrays.
+///No duplicate is made of the vertex/index data, it only indexes into external vertex/index arrays.
 ///So keep those arrays around during the lifetime of this btTriangleIndexVertexArray.
 ATTRIBUTE_ALIGNED16(class)
 btTriangleIndexVertexArray : public btStridingMeshInterface
@@ -100,7 +100,7 @@ public:
 
 	virtual void unLockReadOnlyVertexBase(int subpart) const { (void)subpart; }
 
-	/// getNumSubParts returns the number of seperate subparts
+	/// getNumSubParts returns the number of separate subparts
 	/// each subpart has a continuous array of vertices and indices
 	virtual int getNumSubParts() const
 	{

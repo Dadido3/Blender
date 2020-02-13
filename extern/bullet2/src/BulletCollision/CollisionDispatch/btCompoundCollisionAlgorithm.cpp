@@ -64,7 +64,10 @@ void btCompoundCollisionAlgorithm::preallocateChildAlgorithms(const btCollisionO
 			const btCollisionShape* childShape = compoundShape->getChildShape(i);
 
 			btCollisionObjectWrapper childWrap(colObjWrap, childShape, colObjWrap->getCollisionObject(), colObjWrap->getWorldTransform(), -1, i);  //wrong child trans, but unused (hopefully)
-			m_childCollisionAlgorithms[i] = m_dispatcher->findAlgorithm(&childWrap, otherObjWrap, m_sharedManifold);
+			m_childCollisionAlgorithms[i] = m_dispatcher->findAlgorithm(&childWrap, otherObjWrap, m_sharedManifold, BT_CONTACT_POINT_ALGORITHMS);
+
+			btAlignedObjectArray<btCollisionAlgorithm*> m_childCollisionAlgorithmsContact;
+			btAlignedObjectArray<btCollisionAlgorithm*> m_childCollisionAlgorithmsClosestPoints;
 		}
 	}
 }
@@ -110,6 +113,12 @@ public:
 		const btCompoundShape* compoundShape = static_cast<const btCompoundShape*>(m_compoundColObjWrap->getCollisionShape());
 		btAssert(index < compoundShape->getNumChildShapes());
 
+		if (gCompoundChildShapePairCallback)
+		{
+			if (!gCompoundChildShapePairCallback(m_otherObjWrap->getCollisionShape(), childShape))
+				return;
+		}
+
 		//backup
 		btTransform orgTrans = m_compoundColObjWrap->getWorldTransform();
 
@@ -117,23 +126,43 @@ public:
 		btTransform newChildWorldTrans = orgTrans * childTrans;
 
 		//perform an AABB check first
-		btVector3 aabbMin0, aabbMax0, aabbMin1, aabbMax1;
+		btVector3 aabbMin0, aabbMax0;
 		childShape->getAabb(newChildWorldTrans, aabbMin0, aabbMax0);
+
+		btVector3 extendAabb(m_resultOut->m_closestPointDistanceThreshold, m_resultOut->m_closestPointDistanceThreshold, m_resultOut->m_closestPointDistanceThreshold);
+		aabbMin0 -= extendAabb;
+		aabbMax0 += extendAabb;
+
+		btVector3 aabbMin1, aabbMax1;
 		m_otherObjWrap->getCollisionShape()->getAabb(m_otherObjWrap->getWorldTransform(), aabbMin1, aabbMax1);
 
-		if (gCompoundChildShapePairCallback)
-		{
-			if (!gCompoundChildShapePairCallback(m_otherObjWrap->getCollisionShape(), childShape))
-				return;
-		}
 
 		if (TestAabbAgainstAabb2(aabbMin0, aabbMax0, aabbMin1, aabbMax1))
 		{
-			btCollisionObjectWrapper compoundWrap(this->m_compoundColObjWrap, childShape, m_compoundColObjWrap->getCollisionObject(), newChildWorldTrans, -1, index);
+			btTransform preTransform = childTrans;
+			if (this->m_compoundColObjWrap->m_preTransform)
+			{
+				preTransform = preTransform *(*(this->m_compoundColObjWrap->m_preTransform));
+			}
+			btCollisionObjectWrapper compoundWrap(this->m_compoundColObjWrap, childShape, m_compoundColObjWrap->getCollisionObject(), newChildWorldTrans, preTransform, -1, index);
 
-			//the contactpoint is still projected back using the original inverted worldtrans
-			if (!m_childCollisionAlgorithms[index])
-				m_childCollisionAlgorithms[index] = m_dispatcher->findAlgorithm(&compoundWrap, m_otherObjWrap, m_sharedManifold);
+			btCollisionAlgorithm* algo = 0;
+			bool allocatedAlgorithm = false;
+
+			if (m_resultOut->m_closestPointDistanceThreshold > 0)
+			{
+				algo = m_dispatcher->findAlgorithm(&compoundWrap, m_otherObjWrap, 0, BT_CLOSEST_POINT_ALGORITHMS);
+				allocatedAlgorithm = true;
+			}
+			else
+			{
+				//the contactpoint is still projected back using the original inverted worldtrans
+				if (!m_childCollisionAlgorithms[index])
+				{
+					m_childCollisionAlgorithms[index] = m_dispatcher->findAlgorithm(&compoundWrap, m_otherObjWrap, m_sharedManifold, BT_CONTACT_POINT_ALGORITHMS);
+				}
+				algo = m_childCollisionAlgorithms[index];
+			}
 
 			const btCollisionObjectWrapper* tmpWrap = 0;
 
@@ -151,7 +180,7 @@ public:
 				m_resultOut->setShapeIdentifiersB(-1, index);
 			}
 
-			m_childCollisionAlgorithms[index]->processCollision(&compoundWrap, m_otherObjWrap, m_dispatchInfo, m_resultOut);
+			algo->processCollision(&compoundWrap, m_otherObjWrap, m_dispatchInfo, m_resultOut);
 
 #if 0
 			if (m_dispatchInfo.m_debugDraw && (m_dispatchInfo.m_debugDraw->getDebugMode() & btIDebugDraw::DBG_DrawAabb))
@@ -169,6 +198,11 @@ public:
 			else
 			{
 				m_resultOut->setBody1Wrap(tmpWrap);
+			}
+			if (allocatedAlgorithm)
+			{
+				algo->~btCollisionAlgorithm();
+				m_dispatcher->freeCollisionAlgorithm(algo);
 			}
 		}
 	}
@@ -224,7 +258,7 @@ void btCompoundCollisionAlgorithm::processCollision(const btCollisionObjectWrapp
 	///so we should add a 'refreshManifolds' in the btCollisionAlgorithm
 	{
 		int i;
-		btManifoldArray manifoldArray;
+		manifoldArray.resize(0);
 		for (i = 0; i < m_childCollisionAlgorithms.size(); i++)
 		{
 			if (m_childCollisionAlgorithms[i])
@@ -250,10 +284,13 @@ void btCompoundCollisionAlgorithm::processCollision(const btCollisionObjectWrapp
 		btTransform otherInCompoundSpace;
 		otherInCompoundSpace = colObjWrap->getWorldTransform().inverse() * otherObjWrap->getWorldTransform();
 		otherObjWrap->getCollisionShape()->getAabb(otherInCompoundSpace, localAabbMin, localAabbMax);
+		btVector3 extraExtends(resultOut->m_closestPointDistanceThreshold, resultOut->m_closestPointDistanceThreshold, resultOut->m_closestPointDistanceThreshold);
+		localAabbMin -= extraExtends;
+		localAabbMax += extraExtends;
 
 		const ATTRIBUTE_ALIGNED16(btDbvtVolume) bounds = btDbvtVolume::FromMM(localAabbMin, localAabbMax);
 		//process all children, that overlap with  the given AABB bounds
-		tree->collideTV(tree->m_root, bounds, callback);
+		tree->collideTVNoStackAlloc(tree->m_root, bounds, stack2, callback);
 	}
 	else
 	{
@@ -270,7 +307,7 @@ void btCompoundCollisionAlgorithm::processCollision(const btCollisionObjectWrapp
 		//iterate over all children, perform an AABB check inside ProcessChildShape
 		int numChildren = m_childCollisionAlgorithms.size();
 		int i;
-		btManifoldArray manifoldArray;
+		manifoldArray.resize(0);
 		const btCollisionShape* childShape = 0;
 		btTransform orgTrans;
 

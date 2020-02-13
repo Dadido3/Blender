@@ -13,15 +13,17 @@ subject to the following restrictions:
 3. This notice may not be removed or altered from any source distribution.
 */
 
-//#if defined (_WIN32) || defined (__i386__)
-//#define BT_USE_SSE_IN_API
-//#endif
+#if defined(_WIN32) || defined(__i386__)
+#define BT_USE_SSE_IN_API
+#endif
 
 #include "btConvexHullShape.h"
 #include "BulletCollision/CollisionShapes/btCollisionMargin.h"
 
 #include "LinearMath/btQuaternion.h"
 #include "LinearMath/btSerializer.h"
+#include "btConvexPolyhedron.h"
+#include "LinearMath/btConvexHullComputer.h"
 
 btConvexHullShape ::btConvexHullShape(const btScalar* points, int numPoints, int stride) : btPolyhedralConvexAabbCachingShape()
 {
@@ -111,6 +113,18 @@ btVector3 btConvexHullShape::localGetSupportingVertex(const btVector3& vec) cons
 	return supVertex;
 }
 
+void btConvexHullShape::optimizeConvexHull()
+{
+	btConvexHullComputer conv;
+	conv.compute(&m_unscaledPoints[0].getX(), sizeof(btVector3), m_unscaledPoints.size(), 0.f, 0.f);
+	int numVerts = conv.vertices.size();
+	m_unscaledPoints.resize(0);
+	for (int i = 0; i < numVerts; i++)
+	{
+		m_unscaledPoints.push_back(conv.vertices[i]);
+	}
+}
+
 //currently just for debugging (drawing), perhaps future support for algebraic continuous collision detection
 //Please note that you can debug-draw btConvexHullShape with the Raytracer Demo
 int btConvexHullShape::getNumVertices() const
@@ -183,6 +197,9 @@ const char* btConvexHullShape::serialize(void* dataBuffer, btSerializer* seriali
 		}
 		serializer->finalizeChunk(chunk, btVector3DataName, BT_ARRAY_CODE, (void*)&m_unscaledPoints[0]);
 	}
+
+	// Fill padding with zeros to appease msan.
+	memset(shapeData->m_padding3, 0, sizeof(shapeData->m_padding3));
 
 	return "btConvexHullShapeData";
 }

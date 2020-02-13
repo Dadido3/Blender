@@ -161,7 +161,7 @@ typedef btAlignedObjectArray<btQuantizedBvhNode> QuantizedNodeArray;
 typedef btAlignedObjectArray<btBvhSubtreeInfo> BvhSubtreeInfoArray;
 
 ///The btQuantizedBvh class stores an AABB tree that can be quickly traversed on CPU and Cell SPU.
-///It is used by the btBvhTriangleMeshShape as midphase, and by the btMultiSapBroadphase.
+///It is used by the btBvhTriangleMeshShape as midphase.
 ///It is recommended to use quantization for better performance and lower memory requirements.
 ATTRIBUTE_ALIGNED16(class)
 btQuantizedBvh
@@ -462,6 +462,8 @@ private:
 	btQuantizedBvh(btQuantizedBvh & other, bool ownsMemory);
 };
 
+// clang-format off
+// parser needs * with the name
 struct btBvhSubtreeInfoData
 {
 	int m_rootNodeIndex;
@@ -490,45 +492,48 @@ struct btOptimizedBvhNodeDoubleData
 	char m_pad[4];
 };
 
+
 struct btQuantizedBvhNodeData
 {
 	unsigned short m_quantizedAabbMin[3];
 	unsigned short m_quantizedAabbMax[3];
-	int m_escapeIndexOrTriangleIndex;
+	int	m_escapeIndexOrTriangleIndex;
 };
 
-struct btQuantizedBvhFloatData
+struct	btQuantizedBvhFloatData
 {
-	btVector3FloatData m_bvhAabbMin;
-	btVector3FloatData m_bvhAabbMax;
-	btVector3FloatData m_bvhQuantization;
-	int m_curNodeIndex;
-	int m_useQuantization;
-	int m_numContiguousLeafNodes;
-	int m_numQuantizedContiguousNodes;
-	btOptimizedBvhNodeFloatData* m_contiguousNodesPtr;
-	btQuantizedBvhNodeData* m_quantizedContiguousNodesPtr;
-	btBvhSubtreeInfoData* m_subTreeInfoPtr;
-	int m_traversalMode;
-	int m_numSubtreeHeaders;
+	btVector3FloatData			m_bvhAabbMin;
+	btVector3FloatData			m_bvhAabbMax;
+	btVector3FloatData			m_bvhQuantization;
+	int					m_curNodeIndex;
+	int					m_useQuantization;
+	int					m_numContiguousLeafNodes;
+	int					m_numQuantizedContiguousNodes;
+	btOptimizedBvhNodeFloatData	*m_contiguousNodesPtr;
+	btQuantizedBvhNodeData		*m_quantizedContiguousNodesPtr;
+	btBvhSubtreeInfoData	*m_subTreeInfoPtr;
+	int					m_traversalMode;
+	int					m_numSubtreeHeaders;
+	
 };
 
-struct btQuantizedBvhDoubleData
+struct	btQuantizedBvhDoubleData
 {
-	btVector3DoubleData m_bvhAabbMin;
-	btVector3DoubleData m_bvhAabbMax;
-	btVector3DoubleData m_bvhQuantization;
-	int m_curNodeIndex;
-	int m_useQuantization;
-	int m_numContiguousLeafNodes;
-	int m_numQuantizedContiguousNodes;
-	btOptimizedBvhNodeDoubleData* m_contiguousNodesPtr;
-	btQuantizedBvhNodeData* m_quantizedContiguousNodesPtr;
+	btVector3DoubleData			m_bvhAabbMin;
+	btVector3DoubleData			m_bvhAabbMax;
+	btVector3DoubleData			m_bvhQuantization;
+	int							m_curNodeIndex;
+	int							m_useQuantization;
+	int							m_numContiguousLeafNodes;
+	int							m_numQuantizedContiguousNodes;
+	btOptimizedBvhNodeDoubleData	*m_contiguousNodesPtr;
+	btQuantizedBvhNodeData			*m_quantizedContiguousNodesPtr;
 
-	int m_traversalMode;
-	int m_numSubtreeHeaders;
-	btBvhSubtreeInfoData* m_subTreeInfoPtr;
+	int							m_traversalMode;
+	int							m_numSubtreeHeaders;
+	btBvhSubtreeInfoData		*m_subTreeInfoPtr;
 };
+// clang-format on
 
 SIMD_FORCE_INLINE int btQuantizedBvh::calculateSerializeBufferSizeNew() const
 {

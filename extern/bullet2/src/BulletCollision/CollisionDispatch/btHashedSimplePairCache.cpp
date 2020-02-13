@@ -17,10 +17,12 @@ subject to the following restrictions:
 
 #include <stdio.h>
 
+#ifdef BT_DEBUG_COLLISION_PAIRS
 int gOverlappingSimplePairs = 0;
 int gRemoveSimplePairs = 0;
 int gAddedSimplePairs = 0;
 int gFindSimplePairs = 0;
+#endif  //BT_DEBUG_COLLISION_PAIRS
 
 btHashedSimplePairCache::btHashedSimplePairCache()
 {
@@ -46,7 +48,9 @@ void btHashedSimplePairCache::removeAllPairs()
 
 btSimplePair* btHashedSimplePairCache::findPair(int indexA, int indexB)
 {
+#ifdef BT_DEBUG_COLLISION_PAIRS
 	gFindSimplePairs++;
+#endif
 
 	/*if (indexA > indexB) 
 		btSwap(indexA, indexB);*/
@@ -147,7 +151,9 @@ btSimplePair* btHashedSimplePairCache::internalAddPair(int indexA, int indexB)
 
 void* btHashedSimplePairCache::removeOverlappingPair(int indexA, int indexB)
 {
+#ifdef BT_DEBUG_COLLISION_PAIRS
 	gRemoveSimplePairs++;
+#endif
 
 	/*if (indexA > indexB) 
 		btSwap(indexA, indexB);*/

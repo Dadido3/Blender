@@ -160,7 +160,7 @@ public:
 	///"principal" has to be applied inversely to all children transforms in order for the local coordinate system of the compound
 	///shape to be centered at the center of mass and to coincide with the principal axes. This also necessitates a correction of the world transform
 	///of the collision object by the principal transform.
-	void calculatePrincipalAxisTransform(btScalar * masses, btTransform & principal, btVector3 & inertia) const;
+	void calculatePrincipalAxisTransform(const btScalar* masses, btTransform& principal, btVector3& inertia) const;
 
 	int getUpdateRevision() const
 	{
@@ -173,26 +173,31 @@ public:
 	virtual const char* serialize(void* dataBuffer, btSerializer* serializer) const;
 };
 
+// clang-format off
+
 ///do not change those serialization structures, it requires an updated sBulletDNAstr/sBulletDNAstr64
 struct btCompoundShapeChildData
 {
-	btTransformFloatData m_transform;
-	btCollisionShapeData* m_childShape;
-	int m_childShapeType;
-	float m_childMargin;
+	btTransformFloatData	m_transform;
+	btCollisionShapeData	*m_childShape;
+	int						m_childShapeType;
+	float					m_childMargin;
 };
 
 ///do not change those serialization structures, it requires an updated sBulletDNAstr/sBulletDNAstr64
-struct btCompoundShapeData
+struct	btCompoundShapeData
 {
-	btCollisionShapeData m_collisionShapeData;
+	btCollisionShapeData		m_collisionShapeData;
 
-	btCompoundShapeChildData* m_childShapePtr;
+	btCompoundShapeChildData	*m_childShapePtr;
 
-	int m_numChildShapes;
+	int							m_numChildShapes;
 
-	float m_collisionMargin;
+	float	m_collisionMargin;
+
 };
+
+// clang-format on
 
 SIMD_FORCE_INLINE int btCompoundShape::calculateSerializeBufferSize() const
 {

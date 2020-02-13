@@ -36,7 +36,9 @@ email: projectileman@yahoo.com
 #include "gim_box_collision.h"
 #include "gim_clip_polygon.h"
 
+#ifndef MAX_TRI_CLIPPING
 #define MAX_TRI_CLIPPING 16
+#endif
 
 //! Structure for collision
 struct GIM_TRIANGLE_CONTACT_DATA

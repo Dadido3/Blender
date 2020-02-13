@@ -23,6 +23,15 @@ subject to the following restrictions:
 class btSolveProjectedGaussSeidel : public btMLCPSolverInterface
 {
 public:
+	btScalar m_leastSquaresResidualThreshold;
+	btScalar m_leastSquaresResidual;
+
+	btSolveProjectedGaussSeidel()
+		: m_leastSquaresResidualThreshold(0),
+		  m_leastSquaresResidual(0)
+	{
+	}
+
 	virtual bool solveMLCP(const btMatrixXu& A, const btVectorXu& b, btVectorXu& x, const btVectorXu& lo, const btVectorXu& hi, const btAlignedObjectArray<int>& limitDependency, int numIterations, bool useSparsity = true)
 	{
 		if (!A.rows())
@@ -35,10 +44,11 @@ public:
 
 		int i, j, numRows = A.rows();
 
-		float delta;
+		btScalar delta;
 
 		for (int k = 0; k < numIterations; k++)
 		{
+			m_leastSquaresResidual = 0.f;
 			for (i = 0; i < numRows; i++)
 			{
 				delta = 0.0f;
@@ -46,7 +56,7 @@ public:
 				{
 					for (int h = 0; h < A.m_rowNonZeroElements1[i].size(); h++)
 					{
-						int j = A.m_rowNonZeroElements1[i][h];
+						j = A.m_rowNonZeroElements1[i][h];
 						if (j != i)  //skip main diagonal
 						{
 							delta += A(i, j) * x[j];
@@ -61,9 +71,10 @@ public:
 						delta += A(i, j) * x[j];
 				}
 
-				float aDiag = A(i, i);
+				btScalar aDiag = A(i, i);
+				btScalar xOld = x[i];
 				x[i] = (b[i] - delta) / aDiag;
-				float s = 1.f;
+				btScalar s = 1.f;
 
 				if (limitDependency[i] >= 0)
 				{
@@ -76,6 +87,17 @@ public:
 					x[i] = lo[i] * s;
 				if (x[i] > hi[i] * s)
 					x[i] = hi[i] * s;
+				btScalar diff = x[i] - xOld;
+				m_leastSquaresResidual += diff * diff;
+			}
+
+			btScalar eps = m_leastSquaresResidualThreshold;
+			if ((m_leastSquaresResidual < eps) || (k >= (numIterations - 1)))
+			{
+#ifdef VERBOSE_PRINTF_RESIDUAL
+				printf("totalLenSqr = %f at iteration #%d\n", m_leastSquaresResidual, k);
+#endif
+				break;
 			}
 		}
 		return true;

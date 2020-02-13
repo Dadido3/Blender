@@ -78,6 +78,8 @@ void btRigidBody::setupRigidBody(const btRigidBody::btRigidBodyConstructionInfo&
 	//moved to btCollisionObject
 	m_friction = constructionInfo.m_friction;
 	m_rollingFriction = constructionInfo.m_rollingFriction;
+	m_spinningFriction = constructionInfo.m_spinningFriction;
+
 	m_restitution = constructionInfo.m_restitution;
 
 	setCollisionShape(constructionInfo.m_collisionShape);
@@ -202,6 +204,14 @@ void btRigidBody::applyGravity()
 		return;
 
 	applyCentralForce(m_gravity);
+}
+
+void btRigidBody::clearGravity()
+{
+    if (isStaticOrKinematicObject())
+        return;
+    
+    applyCentralForce(-m_gravity);
 }
 
 void btRigidBody::proceedToTransform(const btTransform& newTrans)
@@ -395,36 +405,47 @@ void btRigidBody::setCenterOfMassTransform(const btTransform& xform)
 	updateInertiaTensor();
 }
 
-bool btRigidBody::checkCollideWithOverride(const btCollisionObject* co) const
-{
-	const btRigidBody* otherRb = btRigidBody::upcast(co);
-	if (!otherRb)
-		return true;
-
-	for (int i = 0; i < m_constraintRefs.size(); ++i)
-	{
-		const btTypedConstraint* c = m_constraintRefs[i];
-		if (c->isEnabled())
-			if (&c->getRigidBodyA() == otherRb || &c->getRigidBodyB() == otherRb)
-				return false;
-	}
-
-	return true;
-}
-
 void btRigidBody::addConstraintRef(btTypedConstraint* c)
 {
-	int index = m_constraintRefs.findLinearSearch(c);
-	if (index == m_constraintRefs.size())
-		m_constraintRefs.push_back(c);
+	///disable collision with the 'other' body
 
-	m_checkCollideWith = true;
+	int index = m_constraintRefs.findLinearSearch(c);
+	//don't add constraints that are already referenced
+	//btAssert(index == m_constraintRefs.size());
+	if (index == m_constraintRefs.size())
+	{
+		m_constraintRefs.push_back(c);
+		btCollisionObject* colObjA = &c->getRigidBodyA();
+		btCollisionObject* colObjB = &c->getRigidBodyB();
+		if (colObjA == this)
+		{
+			colObjA->setIgnoreCollisionCheck(colObjB, true);
+		}
+		else
+		{
+			colObjB->setIgnoreCollisionCheck(colObjA, true);
+		}
+	}
 }
 
 void btRigidBody::removeConstraintRef(btTypedConstraint* c)
 {
-	m_constraintRefs.remove(c);
-	m_checkCollideWith = m_constraintRefs.size() > 0;
+	int index = m_constraintRefs.findLinearSearch(c);
+	//don't remove constraints that are not referenced
+	if (index < m_constraintRefs.size())
+	{
+		m_constraintRefs.remove(c);
+		btCollisionObject* colObjA = &c->getRigidBodyA();
+		btCollisionObject* colObjB = &c->getRigidBodyB();
+		if (colObjA == this)
+		{
+			colObjA->setIgnoreCollisionCheck(colObjB, false);
+		}
+		else
+		{
+			colObjB->setIgnoreCollisionCheck(colObjA, false);
+		}
+	}
 }
 
 int btRigidBody::calculateSerializeBufferSize() const
@@ -460,6 +481,11 @@ const char* btRigidBody::serialize(void* dataBuffer, class btSerializer* seriali
 	rbd->m_additionalAngularDampingFactor = m_additionalAngularDampingFactor;
 	rbd->m_linearSleepingThreshold = m_linearSleepingThreshold;
 	rbd->m_angularSleepingThreshold = m_angularSleepingThreshold;
+
+	// Fill padding with zeros to appease msan.
+#ifdef BT_USE_DOUBLE_PRECISION
+	memset(rbd->m_padding, 0, sizeof(rbd->m_padding));
+#endif
 
 	return btRigidBodyDataName;
 }

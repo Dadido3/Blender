@@ -60,7 +60,7 @@ bool btDefaultSoftBodySolver::checkInitialized()
 	return true;
 }
 
-void btDefaultSoftBodySolver::solveConstraints(float solverdt)
+void btDefaultSoftBodySolver::solveConstraints(btScalar solverdt)
 {
 	// Solve constraints for non-solver softbodies
 	for (int i = 0; i < m_softBodySet.size(); ++i)
@@ -97,9 +97,9 @@ void btDefaultSoftBodySolver::copySoftBodyToVertexBuffer(const btSoftBody *const
 			for (int vertexIndex = 0; vertexIndex < numVertices; ++vertexIndex)
 			{
 				btVector3 position = clothVertices[vertexIndex].m_x;
-				*(vertexPointer + 0) = position.getX();
-				*(vertexPointer + 1) = position.getY();
-				*(vertexPointer + 2) = position.getZ();
+				*(vertexPointer + 0) = (float)position.getX();
+				*(vertexPointer + 1) = (float)position.getY();
+				*(vertexPointer + 2) = (float)position.getZ();
 				vertexPointer += vertexStride;
 			}
 		}
@@ -112,9 +112,9 @@ void btDefaultSoftBodySolver::copySoftBodyToVertexBuffer(const btSoftBody *const
 			for (int vertexIndex = 0; vertexIndex < numVertices; ++vertexIndex)
 			{
 				btVector3 normal = clothVertices[vertexIndex].m_n;
-				*(normalPointer + 0) = normal.getX();
-				*(normalPointer + 1) = normal.getY();
-				*(normalPointer + 2) = normal.getZ();
+				*(normalPointer + 0) = (float)normal.getX();
+				*(normalPointer + 1) = (float)normal.getY();
+				*(normalPointer + 2) = (float)normal.getZ();
 				normalPointer += normalStride;
 			}
 		}
@@ -132,7 +132,7 @@ void btDefaultSoftBodySolver::processCollision(btSoftBody *softBody, const btCol
 	softBody->defaultCollisionHandler(collisionObjectWrap);
 }  // btDefaultSoftBodySolver::processCollision
 
-void btDefaultSoftBodySolver::predictMotion(float timeStep)
+void btDefaultSoftBodySolver::predictMotion(btScalar timeStep)
 {
 	for (int i = 0; i < m_softBodySet.size(); ++i)
 	{

@@ -112,7 +112,6 @@ public:
 	btCollisionShape* getCollisionShapeByIndex(int index);
 	int getNumRigidBodies() const;
 	btCollisionObject* getRigidBodyByIndex(int index) const;
-	int getNumConstraints() const;
 
 	int getNumBvhs() const;
 	btOptimizedBvh* getBvhByIndex(int index) const;

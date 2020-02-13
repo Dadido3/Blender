@@ -58,7 +58,7 @@ public:
 
 	virtual void unLockReadOnlyVertexBase(int subpart) const = 0;
 
-	/// getNumSubParts returns the number of seperate subparts
+	/// getNumSubParts returns the number of separate subparts
 	/// each subpart has a continuous array of vertices and indices
 	virtual int getNumSubParts() const = 0;
 
@@ -115,30 +115,35 @@ struct btCharIndexTripletData
 	char m_pad;
 };
 
+// clang-format off
+
 ///do not change those serialization structures, it requires an updated sBulletDNAstr/sBulletDNAstr64
-struct btMeshPartData
+struct	btMeshPartData
 {
-	btVector3FloatData* m_vertices3f;
-	btVector3DoubleData* m_vertices3d;
+	btVector3FloatData			*m_vertices3f;
+	btVector3DoubleData			*m_vertices3d;
 
-	btIntIndexData* m_indices32;
-	btShortIntIndexTripletData* m_3indices16;
-	btCharIndexTripletData* m_3indices8;
+	btIntIndexData				*m_indices32;
+	btShortIntIndexTripletData	*m_3indices16;
+	btCharIndexTripletData		*m_3indices8;
 
-	btShortIntIndexData* m_indices16;  //backwards compatibility
+	btShortIntIndexData			*m_indices16;//backwards compatibility
 
-	int m_numTriangles;  //length of m_indices = m_numTriangles
-	int m_numVertices;
+	int                     m_numTriangles;//length of m_indices = m_numTriangles
+	int                     m_numVertices;
 };
 
+
 ///do not change those serialization structures, it requires an updated sBulletDNAstr/sBulletDNAstr64
-struct btStridingMeshInterfaceData
+struct	btStridingMeshInterfaceData
 {
-	btMeshPartData* m_meshPartsPtr;
-	btVector3FloatData m_scaling;
-	int m_numMeshParts;
+	btMeshPartData	*m_meshPartsPtr;
+	btVector3FloatData	m_scaling;
+	int	m_numMeshParts;
 	char m_padding[4];
 };
+
+// clang-format on
 
 SIMD_FORCE_INLINE int btStridingMeshInterface::calculateSerializeBufferSize() const
 {

@@ -114,22 +114,27 @@ public:
 	virtual void serializeSingleTriangleInfoMap(btSerializer * serializer) const;
 };
 
+// clang-format off
+
 ///do not change those serialization structures, it requires an updated sBulletDNAstr/sBulletDNAstr64
-struct btTriangleMeshShapeData
+struct	btTriangleMeshShapeData
 {
-	btCollisionShapeData m_collisionShapeData;
+	btCollisionShapeData	m_collisionShapeData;
 
 	btStridingMeshInterfaceData m_meshInterface;
 
-	btQuantizedBvhFloatData* m_quantizedFloatBvh;
-	btQuantizedBvhDoubleData* m_quantizedDoubleBvh;
+	btQuantizedBvhFloatData		*m_quantizedFloatBvh;
+	btQuantizedBvhDoubleData	*m_quantizedDoubleBvh;
 
-	btTriangleInfoMapData* m_triangleInfoMap;
-
-	float m_collisionMargin;
+	btTriangleInfoMapData	*m_triangleInfoMap;
+	
+	float	m_collisionMargin;
 
 	char m_pad3[4];
+	
 };
+
+// clang-format on
 
 SIMD_FORCE_INLINE int btBvhTriangleMeshShape::calculateSerializeBufferSize() const
 {

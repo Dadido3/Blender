@@ -37,8 +37,13 @@ email: projectileman@yahoo.com
 
 #include "gim_linear_math.h"
 
+#ifndef PLANEDIREPSILON
 #define PLANEDIREPSILON 0.0000001f
+#endif
+
+#ifndef PARALELENORMALS
 #define PARALELENORMALS 0.000001f
+#endif
 
 #define TRIANGLE_NORMAL(v1, v2, v3, n) \
 	{                                  \

@@ -337,7 +337,6 @@ void btSliderConstraint::getInfo2NonVirtual(btConstraintInfo2* info, const btTra
 	int srow;
 	btScalar limit_err;
 	int limit;
-	int powered;
 
 	// next two rows.
 	// we want: velA + wA x relA == velB + wB x relB ... but this would
@@ -442,11 +441,7 @@ void btSliderConstraint::getInfo2NonVirtual(btConstraintInfo2* info, const btTra
 		limit_err = getLinDepth() * signFact;
 		limit = (limit_err > btScalar(0.0)) ? 2 : 1;
 	}
-	powered = 0;
-	if (getPoweredLinMotor())
-	{
-		powered = 1;
-	}
+	bool powered = getPoweredLinMotor();
 	// if the slider has joint limits or motor, add in the extra row
 	if (limit || powered)
 	{
@@ -496,7 +491,7 @@ void btSliderConstraint::getInfo2NonVirtual(btConstraintInfo2* info, const btTra
 		btScalar histop = getUpperLinLimit();
 		if (limit && (lostop == histop))
 		{  // the joint motor is ineffective
-			powered = 0;
+			powered = false;
 		}
 		info->m_constraintError[srow] = 0.;
 		info->m_lowerLimit[srow] = 0.;
@@ -581,11 +576,7 @@ void btSliderConstraint::getInfo2NonVirtual(btConstraintInfo2* info, const btTra
 		limit = (limit_err > btScalar(0.0)) ? 1 : 2;
 	}
 	// if the slider has joint limits, add in the extra row
-	powered = 0;
-	if (getPoweredAngMotor())
-	{
-		powered = 1;
-	}
+	powered = getPoweredAngMotor();
 	if (limit || powered)
 	{
 		nrow++;
@@ -602,7 +593,7 @@ void btSliderConstraint::getInfo2NonVirtual(btConstraintInfo2* info, const btTra
 		btScalar histop = getUpperAngLimit();
 		if (limit && (lostop == histop))
 		{  // the joint motor is ineffective
-			powered = 0;
+			powered = false;
 		}
 		currERP = (m_flags & BT_SLIDER_FLAGS_ERP_LIMANG) ? m_softnessLimAng : info->erp;
 		if (powered)

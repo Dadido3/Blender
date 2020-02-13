@@ -74,14 +74,18 @@ struct btPositionAndRadius
 	float m_radius;
 };
 
-struct btMultiSphereShapeData
-{
-	btConvexInternalShapeData m_convexInternalShapeData;
+// clang-format off
 
-	btPositionAndRadius* m_localPositionArrayPtr;
-	int m_localPositionArraySize;
-	char m_padding[4];
+struct	btMultiSphereShapeData
+{
+	btConvexInternalShapeData	m_convexInternalShapeData;
+
+	btPositionAndRadius	*m_localPositionArrayPtr;
+	int				m_localPositionArraySize;
+	char	m_padding[4];
 };
+
+// clang-format on
 
 SIMD_FORCE_INLINE int btMultiSphereShape::calculateSerializeBufferSize() const
 {

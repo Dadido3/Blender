@@ -13,9 +13,9 @@ subject to the following restrictions:
 3. This notice may not be removed or altered from any source distribution.
 */
 
-//#if defined (_WIN32) || defined (__i386__)
-//#define BT_USE_SSE_IN_API
-//#endif
+#if defined(_WIN32) || defined(__i386__)
+#define BT_USE_SSE_IN_API
+#endif
 
 #include "btConvexShape.h"
 #include "btTriangleShape.h"
@@ -119,6 +119,10 @@ static btVector3 convexHullSupport(const btVector3& localDirOrg, const btVector3
 	btScalar maxDot;
 	long ptIndex = vec.maxDot(points, numPoints, maxDot);
 	btAssert(ptIndex >= 0);
+	if (ptIndex < 0)
+	{
+		ptIndex = 0;
+	}
 	btVector3 supVec = points[ptIndex] * localScaling;
 	return supVec;
 #endif  //__SPU__
@@ -229,14 +233,13 @@ btVector3 btConvexShape::localGetSupportVertexWithoutMarginNonVirtual(const btVe
 			btScalar halfHeight = capsuleShape->getHalfHeight();
 			int capsuleUpAxis = capsuleShape->getUpAxis();
 
-			btScalar radius = capsuleShape->getRadius();
 			btVector3 supVec(0, 0, 0);
 
 			btScalar maxDot(btScalar(-BT_LARGE_FLOAT));
 
 			btVector3 vec = vec0;
 			btScalar lenSqr = vec.length2();
-			if (lenSqr < btScalar(0.0001))
+			if (lenSqr < SIMD_EPSILON * SIMD_EPSILON)
 			{
 				vec.setValue(1, 0, 0);
 			}
@@ -251,8 +254,7 @@ btVector3 btConvexShape::localGetSupportVertexWithoutMarginNonVirtual(const btVe
 				btVector3 pos(0, 0, 0);
 				pos[capsuleUpAxis] = halfHeight;
 
-				//vtx = pos +vec*(radius);
-				vtx = pos + vec * (radius)-vec * capsuleShape->getMarginNV();
+				vtx = pos;
 				newDot = vec.dot(vtx);
 
 				if (newDot > maxDot)
@@ -265,8 +267,7 @@ btVector3 btConvexShape::localGetSupportVertexWithoutMarginNonVirtual(const btVe
 				btVector3 pos(0, 0, 0);
 				pos[capsuleUpAxis] = -halfHeight;
 
-				//vtx = pos +vec*(radius);
-				vtx = pos + vec * (radius)-vec * capsuleShape->getMarginNV();
+				vtx = pos;
 				newDot = vec.dot(vtx);
 				if (newDot > maxDot)
 				{
@@ -426,7 +427,6 @@ void btConvexShape::getAabbNonVirtual(const btTransform& t, btVector3& aabbMin, 
 			btVector3 halfExtents(capsuleShape->getRadius(), capsuleShape->getRadius(), capsuleShape->getRadius());
 			int m_upAxis = capsuleShape->getUpAxis();
 			halfExtents[m_upAxis] = capsuleShape->getRadius() + capsuleShape->getHalfHeight();
-			halfExtents += btVector3(capsuleShape->getMarginNonVirtual(), capsuleShape->getMarginNonVirtual(), capsuleShape->getMarginNonVirtual());
 			btMatrix3x3 abs_b = t.getBasis().absolute();
 			btVector3 center = t.getOrigin();
 			btVector3 extent = halfExtents.dot3(abs_b[0], abs_b[1], abs_b[2]);

@@ -33,7 +33,9 @@ enum btDynamicsWorldType
 	BT_DISCRETE_DYNAMICS_WORLD = 2,
 	BT_CONTINUOUS_DYNAMICS_WORLD = 3,
 	BT_SOFT_RIGID_DYNAMICS_WORLD = 4,
-	BT_GPU_DYNAMICS_WORLD = 5
+	BT_GPU_DYNAMICS_WORLD = 5,
+	BT_SOFT_MULTIBODY_DYNAMICS_WORLD = 6,
+    BT_DEFORMABLE_MULTIBODY_DYNAMICS_WORLD = 7
 };
 
 ///The btDynamicsWorld is the interface class for several dynamics implementation, basic, discrete, parallel, and continuous etc.
@@ -85,7 +87,7 @@ public:
 
 	virtual void addRigidBody(btRigidBody* body) = 0;
 
-	virtual void addRigidBody(btRigidBody* body, short group, short mask) = 0;
+	virtual void addRigidBody(btRigidBody* body, int group, int mask) = 0;
 
 	virtual void removeRigidBody(btRigidBody* body) = 0;
 
@@ -136,6 +138,11 @@ public:
 	}
 
 	btContactSolverInfo& getSolverInfo()
+	{
+		return m_solverInfo;
+	}
+
+	const btContactSolverInfo& getSolverInfo() const
 	{
 		return m_solverInfo;
 	}

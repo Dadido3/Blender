@@ -21,7 +21,6 @@ subject to the following restrictions:
 #include "LinearMath/btVector3.h"
 #include "LinearMath/btTransform.h"
 #include "LinearMath/btAabbUtil2.h"
-
 //
 // Compile time configuration
 //
@@ -131,6 +130,7 @@ subject to the following restrictions:
 /* btDbvtAabbMm			*/
 struct btDbvtAabbMm
 {
+    DBVT_INLINE btDbvtAabbMm(){}
 	DBVT_INLINE btVector3 Center() const { return ((mi + mx) / 2); }
 	DBVT_INLINE btVector3 Lengths() const { return (mx - mi); }
 	DBVT_INLINE btVector3 Extents() const { return ((mx - mi) / 2); }
@@ -190,6 +190,38 @@ struct btDbvtNode
 	};
 };
 
+/* btDbv(normal)tNode                */
+struct btDbvntNode
+{
+    btDbvtVolume volume;
+    btVector3 normal;
+    btScalar angle;
+    DBVT_INLINE bool isleaf() const { return (childs[1] == 0); }
+    DBVT_INLINE bool isinternal() const { return (!isleaf()); }
+    btDbvntNode* childs[2];
+    void* data;
+
+    btDbvntNode(const btDbvtNode* n)
+    : volume(n->volume)
+    , normal(0,0,0)
+    , angle(0)
+    , data(n->data)
+    {
+        childs[0] = 0;
+        childs[1] = 0;
+    }
+    
+    ~btDbvntNode()
+    {
+        if (childs[0])
+            delete childs[0];
+        if (childs[1])
+            delete childs[1];
+    }
+};
+
+typedef btAlignedObjectArray<const btDbvtNode*> btNodeStack;
+
 ///The btDbvt class implements a fast dynamic bounding volume tree based on axis aligned bounding boxes (aabb tree).
 ///This btDbvt is used for soft body collision detection and for the btDbvtBroadphase. It has a fast insert, remove and update of nodes.
 ///Unlike the btQuantizedBvh, nodes can be dynamically moved around, which allows for change in topology of the underlying data structure.
@@ -223,6 +255,14 @@ struct btDbvt
 		btDbvtNode* parent;
 		sStkCLN(const btDbvtNode* n, btDbvtNode* p) : node(n), parent(p) {}
 	};
+    
+    struct sStknNN
+    {
+        const btDbvntNode* a;
+        const btDbvntNode* b;
+        sStknNN() {}
+        sStknNN(const btDbvntNode* na, const btDbvntNode* nb) : a(na), b(nb) {}
+    };
 	// Policies/Interfaces
 
 	/* ICollide	*/
@@ -232,6 +272,7 @@ struct btDbvt
 		DBVT_VIRTUAL void Process(const btDbvtNode*, const btDbvtNode*) {}
 		DBVT_VIRTUAL void Process(const btDbvtNode*) {}
 		DBVT_VIRTUAL void Process(const btDbvtNode* n, btScalar) { Process(n); }
+        DBVT_VIRTUAL void Process(const btDbvntNode*, const btDbvntNode*) {}
 		DBVT_VIRTUAL bool Descent(const btDbvtNode*) { return (true); }
 		DBVT_VIRTUAL bool AllLeaves(const btDbvtNode*) { return (true); }
 	};
@@ -265,7 +306,6 @@ struct btDbvt
 	unsigned m_opath;
 
 	btAlignedObjectArray<sStkNN> m_stkStack;
-	mutable btAlignedObjectArray<const btDbvtNode*> m_rayTestStack;
 
 	// Methods
 	btDbvt();
@@ -305,6 +345,12 @@ struct btDbvt
 	void collideTT(const btDbvtNode* root0,
 				   const btDbvtNode* root1,
 				   DBVT_IPOLICY);
+    DBVT_PREFIX
+    void selfCollideT(const btDbvntNode* root,
+                   DBVT_IPOLICY);
+    DBVT_PREFIX
+    void selfCollideTT(const btDbvtNode* root,
+                      DBVT_IPOLICY);
 
 	DBVT_PREFIX
 	void collideTTpersistentStack(const btDbvtNode* root0,
@@ -328,6 +374,13 @@ struct btDbvt
 	void collideTV(const btDbvtNode* root,
 				   const btDbvtVolume& volume,
 				   DBVT_IPOLICY) const;
+
+	DBVT_PREFIX
+	void collideTVNoStackAlloc(const btDbvtNode* root,
+							   const btDbvtVolume& volume,
+							   btNodeStack& stack,
+							   DBVT_IPOLICY) const;
+
 	///rayTest is a re-entrant ray test, and can be called in parallel as long as the btAlignedAlloc is thread-safe (uses locking etc)
 	///rayTest is slower than rayTestInternal, because it builds a local stack, using memory allocations, and it recomputes signs/rayDirectionInverses each time
 	DBVT_PREFIX
@@ -346,6 +399,7 @@ struct btDbvt
 						 btScalar lambda_max,
 						 const btVector3& aabbMin,
 						 const btVector3& aabbMax,
+						 btAlignedObjectArray<const btDbvtNode*>& stack,
 						 DBVT_IPOLICY) const;
 
 	DBVT_PREFIX
@@ -828,6 +882,135 @@ inline void btDbvt::collideTT(const btDbvtNode* root0,
 	}
 }
 
+//
+DBVT_PREFIX
+inline void btDbvt::selfCollideT(const btDbvntNode* root,
+                              DBVT_IPOLICY)
+{
+    DBVT_CHECKTYPE
+    if (root)
+    {
+        int depth = 1;
+        int treshold = DOUBLE_STACKSIZE - 4;
+        btAlignedObjectArray<sStknNN> stkStack;
+        stkStack.resize(DOUBLE_STACKSIZE);
+        stkStack[0] = sStknNN(root, root);
+        do
+        {
+            sStknNN p = stkStack[--depth];
+            if (depth > treshold)
+            {
+                stkStack.resize(stkStack.size() * 2);
+                treshold = stkStack.size() - 4;
+            }
+            if (p.a == p.b)
+            {
+                if (p.a->isinternal() && p.a->angle > SIMD_PI)
+                {
+                    stkStack[depth++] = sStknNN(p.a->childs[0], p.a->childs[0]);
+                    stkStack[depth++] = sStknNN(p.a->childs[1], p.a->childs[1]);
+                    stkStack[depth++] = sStknNN(p.a->childs[0], p.a->childs[1]);
+                }
+            }
+            else if (Intersect(p.a->volume, p.b->volume))
+            {
+                if (p.a->isinternal())
+                {
+                    if (p.b->isinternal())
+                    {
+                        stkStack[depth++] = sStknNN(p.a->childs[0], p.b->childs[0]);
+                        stkStack[depth++] = sStknNN(p.a->childs[1], p.b->childs[0]);
+                        stkStack[depth++] = sStknNN(p.a->childs[0], p.b->childs[1]);
+                        stkStack[depth++] = sStknNN(p.a->childs[1], p.b->childs[1]);
+                    }
+                    else
+                    {
+                        stkStack[depth++] = sStknNN(p.a->childs[0], p.b);
+                        stkStack[depth++] = sStknNN(p.a->childs[1], p.b);
+                    }
+                }
+                else
+                {
+                    if (p.b->isinternal())
+                    {
+                        stkStack[depth++] = sStknNN(p.a, p.b->childs[0]);
+                        stkStack[depth++] = sStknNN(p.a, p.b->childs[1]);
+                    }
+                    else
+                    {
+                        policy.Process(p.a, p.b);
+                    }
+                }
+            }
+        } while (depth);
+    }
+}
+
+//
+DBVT_PREFIX
+inline void btDbvt::selfCollideTT(const btDbvtNode* root,
+                                 DBVT_IPOLICY)
+{
+    DBVT_CHECKTYPE
+    if (root)
+    {
+        int depth = 1;
+        int treshold = DOUBLE_STACKSIZE - 4;
+        btAlignedObjectArray<sStkNN> stkStack;
+        stkStack.resize(DOUBLE_STACKSIZE);
+        stkStack[0] = sStkNN(root, root);
+        do
+        {
+            sStkNN p = stkStack[--depth];
+            if (depth > treshold)
+            {
+                stkStack.resize(stkStack.size() * 2);
+                treshold = stkStack.size() - 4;
+            }
+            if (p.a == p.b)
+            {
+                if (p.a->isinternal())
+                {
+                    stkStack[depth++] = sStkNN(p.a->childs[0], p.a->childs[0]);
+                    stkStack[depth++] = sStkNN(p.a->childs[1], p.a->childs[1]);
+                    stkStack[depth++] = sStkNN(p.a->childs[0], p.a->childs[1]);
+                }
+            }
+            else if (Intersect(p.a->volume, p.b->volume))
+            {
+                if (p.a->isinternal())
+                {
+                    if (p.b->isinternal())
+                    {
+                        stkStack[depth++] = sStkNN(p.a->childs[0], p.b->childs[0]);
+                        stkStack[depth++] = sStkNN(p.a->childs[1], p.b->childs[0]);
+                        stkStack[depth++] = sStkNN(p.a->childs[0], p.b->childs[1]);
+                        stkStack[depth++] = sStkNN(p.a->childs[1], p.b->childs[1]);
+                    }
+                    else
+                    {
+                        stkStack[depth++] = sStkNN(p.a->childs[0], p.b);
+                        stkStack[depth++] = sStkNN(p.a->childs[1], p.b);
+                    }
+                }
+                else
+                {
+                    if (p.b->isinternal())
+                    {
+                        stkStack[depth++] = sStkNN(p.a, p.b->childs[0]);
+                        stkStack[depth++] = sStkNN(p.a, p.b->childs[1]);
+                    }
+                    else
+                    {
+                        policy.Process(p.a, p.b);
+                    }
+                }
+            }
+        } while (depth);
+    }
+}
+
+
 DBVT_PREFIX
 inline void btDbvt::collideTTpersistentStack(const btDbvtNode* root0,
 											 const btDbvtNode* root1,
@@ -961,7 +1144,6 @@ inline void		btDbvt::collideTT(	const btDbvtNode* root0,
 }
 #endif
 
-//
 DBVT_PREFIX
 inline void btDbvt::collideTV(const btDbvtNode* root,
 							  const btDbvtVolume& vol,
@@ -973,6 +1155,47 @@ inline void btDbvt::collideTV(const btDbvtNode* root,
 		ATTRIBUTE_ALIGNED16(btDbvtVolume)
 		volume(vol);
 		btAlignedObjectArray<const btDbvtNode*> stack;
+		stack.resize(0);
+#ifndef BT_DISABLE_STACK_TEMP_MEMORY
+		char tempmemory[SIMPLE_STACKSIZE * sizeof(const btDbvtNode*)];
+		stack.initializeFromBuffer(tempmemory, 0, SIMPLE_STACKSIZE);
+#else
+		stack.reserve(SIMPLE_STACKSIZE);
+#endif  //BT_DISABLE_STACK_TEMP_MEMORY
+
+		stack.push_back(root);
+		do
+		{
+			const btDbvtNode* n = stack[stack.size() - 1];
+			stack.pop_back();
+			if (Intersect(n->volume, volume))
+			{
+				if (n->isinternal())
+				{
+					stack.push_back(n->childs[0]);
+					stack.push_back(n->childs[1]);
+				}
+				else
+				{
+					policy.Process(n);
+				}
+			}
+		} while (stack.size() > 0);
+	}
+}
+
+//
+DBVT_PREFIX
+inline void btDbvt::collideTVNoStackAlloc(const btDbvtNode* root,
+										  const btDbvtVolume& vol,
+										  btNodeStack& stack,
+										  DBVT_IPOLICY) const
+{
+	DBVT_CHECKTYPE
+	if (root)
+	{
+		ATTRIBUTE_ALIGNED16(btDbvtVolume)
+		volume(vol);
 		stack.resize(0);
 		stack.reserve(SIMPLE_STACKSIZE);
 		stack.push_back(root);
@@ -1005,6 +1228,7 @@ inline void btDbvt::rayTestInternal(const btDbvtNode* root,
 									btScalar lambda_max,
 									const btVector3& aabbMin,
 									const btVector3& aabbMax,
+									btAlignedObjectArray<const btDbvtNode*>& stack,
 									DBVT_IPOLICY) const
 {
 	(void)rayTo;
@@ -1015,7 +1239,6 @@ inline void btDbvt::rayTestInternal(const btDbvtNode* root,
 
 		int depth = 1;
 		int treshold = DOUBLE_STACKSIZE - 2;
-		btAlignedObjectArray<const btDbvtNode*>& stack = m_rayTestStack;
 		stack.resize(DOUBLE_STACKSIZE);
 		stack[0] = root;
 		btVector3 bounds[2];
@@ -1077,7 +1300,12 @@ inline void btDbvt::rayTest(const btDbvtNode* root,
 		int depth = 1;
 		int treshold = DOUBLE_STACKSIZE - 2;
 
+		char tempmemory[DOUBLE_STACKSIZE * sizeof(const btDbvtNode*)];
+#ifndef BT_DISABLE_STACK_TEMP_MEMORY
+		stack.initializeFromBuffer(tempmemory, DOUBLE_STACKSIZE, DOUBLE_STACKSIZE);
+#else   //BT_DISABLE_STACK_TEMP_MEMORY
 		stack.resize(DOUBLE_STACKSIZE);
+#endif  //BT_DISABLE_STACK_TEMP_MEMORY
 		stack[0] = root;
 		btVector3 bounds[2];
 		do

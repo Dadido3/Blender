@@ -47,7 +47,7 @@ public:
 
 	virtual void getBoundingSphere(btVector3 & center, btScalar & radius) const;
 
-	///getAngularMotionDisc returns the maximus radius needed for Conservative Advancement to handle time-of-impact with rotations.
+	///getAngularMotionDisc returns the maximum radius needed for Conservative Advancement to handle time-of-impact with rotations.
 	virtual btScalar getAngularMotionDisc() const;
 
 	virtual btScalar getContactBreakingThreshold(btScalar defaultContactThresholdFactor) const;
@@ -145,14 +145,16 @@ public:
 	virtual void serializeSingleShape(btSerializer * serializer) const;
 };
 
+// clang-format off
+// parser needs * with the name
 ///do not change those serialization structures, it requires an updated sBulletDNAstr/sBulletDNAstr64
-struct btCollisionShapeData
+struct	btCollisionShapeData
 {
-	char* m_name;
-	int m_shapeType;
-	char m_padding[4];
+	char	*m_name;
+	int		m_shapeType;
+	char	m_padding[4];
 };
-
+// clang-format on
 SIMD_FORCE_INLINE int btCollisionShape::calculateSerializeBufferSize() const
 {
 	return sizeof(btCollisionShapeData);

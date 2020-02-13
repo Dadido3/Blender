@@ -527,11 +527,7 @@ void btHingeConstraint::getInfo2Internal(btConstraintInfo2* info, const btTransf
 		limit = (limit_err > btScalar(0.0)) ? 1 : 2;
 	}
 	// if the hinge has joint limits or motor, add in the extra row
-	int powered = 0;
-	if (getEnableAngularMotor())
-	{
-		powered = 1;
-	}
+	bool powered = getEnableAngularMotor();
 	if (limit || powered)
 	{
 		nrow++;
@@ -548,7 +544,7 @@ void btHingeConstraint::getInfo2Internal(btConstraintInfo2* info, const btTransf
 		btScalar histop = getUpperLimit();
 		if (limit && (lostop == histop))
 		{  // the joint motor is ineffective
-			powered = 0;
+			powered = false;
 		}
 		info->m_constraintError[srow] = btScalar(0.0f);
 		btScalar currERP = (m_flags & BT_HINGE_FLAGS_ERP_STOP) ? m_stopERP : normalErp;
@@ -768,6 +764,12 @@ void btHingeConstraint::getInfo2InternalUsingFrameOffset(btConstraintInfo2* info
 	btVector3 ax1A = trA.getBasis().getColumn(2);
 	btVector3 ax1B = trB.getBasis().getColumn(2);
 	btVector3 ax1 = ax1A * factA + ax1B * factB;
+	if (ax1.length2()<SIMD_EPSILON)
+	{
+		factA=0.f;
+		factB=1.f;
+		ax1 = ax1A * factA + ax1B * factB;
+	}
 	ax1.normalize();
 	// fill first 3 rows
 	// we want: velA + wA x relA == velB + wB x relB
@@ -911,11 +913,7 @@ void btHingeConstraint::getInfo2InternalUsingFrameOffset(btConstraintInfo2* info
 		limit = (limit_err > btScalar(0.0)) ? 1 : 2;
 	}
 	// if the hinge has joint limits or motor, add in the extra row
-	int powered = 0;
-	if (getEnableAngularMotor())
-	{
-		powered = 1;
-	}
+	bool powered = getEnableAngularMotor();
 	if (limit || powered)
 	{
 		nrow++;
@@ -932,7 +930,7 @@ void btHingeConstraint::getInfo2InternalUsingFrameOffset(btConstraintInfo2* info
 		btScalar histop = getUpperLimit();
 		if (limit && (lostop == histop))
 		{  // the joint motor is ineffective
-			powered = 0;
+			powered = false;
 		}
 		info->m_constraintError[srow] = btScalar(0.0f);
 		btScalar currERP = (m_flags & BT_HINGE_FLAGS_ERP_STOP) ? m_stopERP : normalErp;

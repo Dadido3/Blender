@@ -17,7 +17,6 @@ subject to the following restrictions:
 #define BT_DISCRETE_DYNAMICS_WORLD_H
 
 #include "btDynamicsWorld.h"
-
 class btDispatcher;
 class btOverlappingPairCache;
 class btConstraintSolver;
@@ -26,9 +25,11 @@ class btTypedConstraint;
 class btActionInterface;
 class btPersistentManifold;
 class btIDebugDraw;
+
 struct InplaceSolverIslandCallback;
 
 #include "LinearMath/btAlignedObjectArray.h"
+#include "LinearMath/btThreads.h"
 
 ///btDiscreteDynamicsWorld provides discrete rigid body simulation
 ///those classes replace the obsolete CcdPhysicsEnvironment/CcdPhysicsController
@@ -66,14 +67,16 @@ protected:
 	bool m_latencyMotionStateInterpolation;
 
 	btAlignedObjectArray<btPersistentManifold*> m_predictiveManifolds;
+	btSpinMutex m_predictiveManifoldsMutex;  // used to synchronize threads creating predictive contacts
 
 	virtual void predictUnconstraintMotion(btScalar timeStep);
 
+	void integrateTransformsInternal(btRigidBody * *bodies, int numBodies, btScalar timeStep);  // can be called in parallel
 	virtual void integrateTransforms(btScalar timeStep);
 
 	virtual void calculateSimulationIslands();
 
-	virtual void solveConstraints(btContactSolverInfo & solverInfo);
+	
 
 	virtual void updateActivationState(btScalar timeStep);
 
@@ -83,14 +86,16 @@ protected:
 
 	virtual void internalSingleStepSimulation(btScalar timeStep);
 
-	void createPredictiveContacts(btScalar timeStep);
+	void releasePredictiveContacts();
+	void createPredictiveContactsInternal(btRigidBody * *bodies, int numBodies, btScalar timeStep);  // can be called in parallel
+	virtual void createPredictiveContacts(btScalar timeStep);
 
 	virtual void saveKinematicState(btScalar timeStep);
 
 	void serializeRigidBodies(btSerializer * serializer);
 
 	void serializeDynamicsWorldInfo(btSerializer * serializer);
-
+    
 public:
 	BT_DECLARE_ALIGNED_ALLOCATOR();
 
@@ -102,6 +107,8 @@ public:
 	///if maxSubSteps > 0, it will interpolate motion between fixedTimeStep's
 	virtual int stepSimulation(btScalar timeStep, int maxSubSteps = 1, btScalar fixedTimeStep = btScalar(1.) / btScalar(60.));
 
+    virtual void solveConstraints(btContactSolverInfo & solverInfo);
+    
 	virtual void synchronizeMotionStates();
 
 	///this can be useful to synchronize a single rigid body -> graphics object
@@ -134,11 +141,11 @@ public:
 
 	virtual btVector3 getGravity() const;
 
-	virtual void addCollisionObject(btCollisionObject * collisionObject, short int collisionFilterGroup = btBroadphaseProxy::StaticFilter, short int collisionFilterMask = btBroadphaseProxy::AllFilter ^ btBroadphaseProxy::StaticFilter);
+	virtual void addCollisionObject(btCollisionObject * collisionObject, int collisionFilterGroup = btBroadphaseProxy::StaticFilter, int collisionFilterMask = btBroadphaseProxy::AllFilter ^ btBroadphaseProxy::StaticFilter);
 
 	virtual void addRigidBody(btRigidBody * body);
 
-	virtual void addRigidBody(btRigidBody * body, short group, short mask);
+	virtual void addRigidBody(btRigidBody * body, int group, int mask);
 
 	virtual void removeRigidBody(btRigidBody * body);
 
@@ -222,6 +229,16 @@ public:
 	{
 		return m_latencyMotionStateInterpolation;
 	}
+    
+    btAlignedObjectArray<btRigidBody*>& getNonStaticRigidBodies()
+    {
+        return m_nonStaticRigidBodies;
+    }
+    
+    const btAlignedObjectArray<btRigidBody*>& getNonStaticRigidBodies() const
+    {
+        return m_nonStaticRigidBodies;
+    }
 };
 
 #endif  //BT_DISCRETE_DYNAMICS_WORLD_H

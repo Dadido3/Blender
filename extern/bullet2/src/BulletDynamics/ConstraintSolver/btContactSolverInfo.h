@@ -29,7 +29,9 @@ enum btSolverMode
 	SOLVER_CACHE_FRIENDLY = 128,
 	SOLVER_SIMD = 256,
 	SOLVER_INTERLEAVE_CONTACT_AND_FRICTION_CONSTRAINTS = 512,
-	SOLVER_ALLOW_ZERO_LENGTH_FRICTION_DIRECTIONS = 1024
+	SOLVER_ALLOW_ZERO_LENGTH_FRICTION_DIRECTIONS = 1024,
+	SOLVER_DISABLE_IMPLICIT_CONE_FRICTION = 2048,
+	SOLVER_USE_ARTICULATED_WARMSTARTING = 4096,
 };
 
 struct btContactSolverInfoData
@@ -41,21 +43,30 @@ struct btContactSolverInfoData
 	btScalar m_restitution;
 	int m_numIterations;
 	btScalar m_maxErrorReduction;
-	btScalar m_sor;
-	btScalar m_erp;        //used as Baumgarte factor
-	btScalar m_erp2;       //used in Split Impulse
-	btScalar m_globalCfm;  //constraint force mixing
+	btScalar m_sor;          //successive over-relaxation term
+	btScalar m_erp;          //error reduction for non-contact constraints
+	btScalar m_erp2;         //error reduction for contact constraints
+	btScalar m_deformable_erp;          //error reduction for deformable constraints
+	btScalar m_globalCfm;    //constraint force mixing for contacts and non-contacts
+	btScalar m_frictionERP;  //error reduction for friction constraints
+	btScalar m_frictionCFM;  //constraint force mixing for friction constraints
+
 	int m_splitImpulse;
 	btScalar m_splitImpulsePenetrationThreshold;
 	btScalar m_splitImpulseTurnErp;
 	btScalar m_linearSlop;
 	btScalar m_warmstartingFactor;
-
+	btScalar m_articulatedWarmstartingFactor;
 	int m_solverMode;
 	int m_restingContactRestitutionThreshold;
 	int m_minimumSolverBatchSize;
 	btScalar m_maxGyroscopicForce;
 	btScalar m_singleAxisRollingFrictionThreshold;
+	btScalar m_leastSquaresResidualThreshold;
+	btScalar m_restitutionVelocityThreshold;
+	bool m_jointFeedbackInWorldSpace;
+	bool m_jointFeedbackInJointFrame;
+	int m_reportSolverAnalytics;
 };
 
 struct btContactSolverInfo : public btContactSolverInfoData
@@ -70,20 +81,29 @@ struct btContactSolverInfo : public btContactSolverInfoData
 		m_maxErrorReduction = btScalar(20.);
 		m_numIterations = 10;
 		m_erp = btScalar(0.2);
-		m_erp2 = btScalar(0.8);
+		m_erp2 = btScalar(0.2);
+		m_deformable_erp = btScalar(0.3);
 		m_globalCfm = btScalar(0.);
+		m_frictionERP = btScalar(0.2);  //positional friction 'anchors' are disabled by default
+		m_frictionCFM = btScalar(0.);
 		m_sor = btScalar(1.);
 		m_splitImpulse = true;
 		m_splitImpulsePenetrationThreshold = -.04f;
 		m_splitImpulseTurnErp = 0.1f;
 		m_linearSlop = btScalar(0.0);
 		m_warmstartingFactor = btScalar(0.85);
+		m_articulatedWarmstartingFactor = btScalar(0.85);
 		//m_solverMode =  SOLVER_USE_WARMSTARTING |  SOLVER_SIMD | SOLVER_DISABLE_VELOCITY_DEPENDENT_FRICTION_DIRECTION|SOLVER_USE_2_FRICTION_DIRECTIONS|SOLVER_ENABLE_FRICTION_DIRECTION_CACHING;// | SOLVER_RANDMIZE_ORDER;
 		m_solverMode = SOLVER_USE_WARMSTARTING | SOLVER_SIMD;  // | SOLVER_RANDMIZE_ORDER;
 		m_restingContactRestitutionThreshold = 2;              //unused as of 2.81
 		m_minimumSolverBatchSize = 128;                        //try to combine islands until the amount of constraints reaches this limit
 		m_maxGyroscopicForce = 100.f;                          ///it is only used for 'explicit' version of gyroscopic force
 		m_singleAxisRollingFrictionThreshold = 1e30f;          ///if the velocity is above this threshold, it will use a single constraint row (axis), otherwise 3 rows.
+		m_leastSquaresResidualThreshold = 0.f;
+		m_restitutionVelocityThreshold = 0.2f;  //if the relative velocity is below this threshold, there is zero restitution
+		m_jointFeedbackInWorldSpace = false;
+		m_jointFeedbackInJointFrame = false;
+		m_reportSolverAnalytics = 0;
 	}
 };
 
@@ -104,6 +124,7 @@ struct btContactSolverInfoDoubleData
 	double m_splitImpulseTurnErp;
 	double m_linearSlop;
 	double m_warmstartingFactor;
+	double m_articulatedWarmstartingFactor;
 	double m_maxGyroscopicForce;  ///it is only used for 'explicit' version of gyroscopic force
 	double m_singleAxisRollingFrictionThreshold;
 
@@ -134,16 +155,17 @@ struct btContactSolverInfoFloatData
 
 	float m_linearSlop;
 	float m_warmstartingFactor;
+	float m_articulatedWarmstartingFactor;
 	float m_maxGyroscopicForce;
-	float m_singleAxisRollingFrictionThreshold;
 
+	float m_singleAxisRollingFrictionThreshold;
 	int m_numIterations;
 	int m_solverMode;
 	int m_restingContactRestitutionThreshold;
-	int m_minimumSolverBatchSize;
 
+	int m_minimumSolverBatchSize;
 	int m_splitImpulse;
-	char m_padding[4];
+	
 };
 
 #endif  //BT_CONTACT_SOLVER_INFO

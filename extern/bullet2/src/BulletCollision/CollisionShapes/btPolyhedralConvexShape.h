@@ -38,6 +38,8 @@ public:
 	///experimental/work-in-progress
 	virtual bool initializePolyhedralFeatures(int shiftVerticesByMargin = 0);
 
+	virtual void setPolyhedralFeatures(btConvexPolyhedron & polyhedron);
+
 	const btConvexPolyhedron* getConvexPolyhedron() const
 	{
 		return m_polyhedron;
@@ -83,9 +85,10 @@ protected:
 		aabbMax = m_localAabbMax;
 	}
 
-public:
+protected:
 	btPolyhedralConvexAabbCachingShape();
 
+public:
 	inline void getNonvirtualAabb(const btTransform& trans, btVector3& aabbMin, btVector3& aabbMax, btScalar margin) const
 	{
 		//lazy evaluation of local aabb

@@ -172,8 +172,8 @@ public:
 			__asm__(
 				"addq %[bl], %[rl]\n\t"
 				"adcq %[bh], %[rh]\n\t"
-				: [ rl ] "=r"(result.low), [ rh ] "=r"(result.high)
-				: "0"(low), "1"(high), [ bl ] "g"(b.low), [ bh ] "g"(b.high)
+				: [rl] "=r"(result.low), [rh] "=r"(result.high)
+				: "0"(low), "1"(high), [bl] "g"(b.low), [bh] "g"(b.high)
 				: "cc");
 			return result;
 #else
@@ -189,8 +189,8 @@ public:
 			__asm__(
 				"subq %[bl], %[rl]\n\t"
 				"sbbq %[bh], %[rh]\n\t"
-				: [ rl ] "=r"(result.low), [ rh ] "=r"(result.high)
-				: "0"(low), "1"(high), [ bl ] "g"(b.low), [ bh ] "g"(b.high)
+				: [rl] "=r"(result.low), [rh] "=r"(result.high)
+				: "0"(low), "1"(high), [bl] "g"(b.low), [bh] "g"(b.high)
 				: "cc");
 			return result;
 #else
@@ -204,8 +204,8 @@ public:
 			__asm__(
 				"addq %[bl], %[rl]\n\t"
 				"adcq %[bh], %[rh]\n\t"
-				: [ rl ] "=r"(low), [ rh ] "=r"(high)
-				: "0"(low), "1"(high), [ bl ] "g"(b.low), [ bh ] "g"(b.high)
+				: [rl] "=r"(low), [rh] "=r"(high)
+				: "0"(low), "1"(high), [bl] "g"(b.low), [bh] "g"(b.high)
 				: "cc");
 #else
 			uint64_t lo = low + b.low;
@@ -857,7 +857,7 @@ btConvexHullInternal::Int128 btConvexHullInternal::Int128::mul(int64_t a, int64_
 #ifdef USE_X86_64_ASM
 	__asm__("imulq %[b]"
 			: "=a"(result.low), "=d"(result.high)
-			: "0"(a), [ b ] "r"(b)
+			: "0"(a), [b] "r"(b)
 			: "cc");
 	return result;
 
@@ -884,7 +884,7 @@ btConvexHullInternal::Int128 btConvexHullInternal::Int128::mul(uint64_t a, uint6
 #ifdef USE_X86_64_ASM
 	__asm__("mulq %[b]"
 			: "=a"(result.low), "=d"(result.high)
-			: "0"(a), [ b ] "r"(b)
+			: "0"(a), [b] "r"(b)
 			: "cc");
 
 #else
@@ -925,8 +925,8 @@ int btConvexHullInternal::Rational64::compare(const Rational64& b) const
 		"setnzb %%bl\n\t"      // bl=1 if difference if non-zero, bl=0 if it is zero
 		"decb %%bh\n\t"        // now bx=0x0000 if difference is zero, 0xff01 if it is negative, 0x0001 if it is positive (i.e., same sign as difference)
 		"shll $16, %%ebx\n\t"  // ebx has same sign as difference
-		: "=&b"(result), [ tmp ] "=&r"(tmp), "=a"(dummy)
-		: "a"(denominator), [ bn ] "g"(b.numerator), [ tn ] "g"(numerator), [ bd ] "g"(b.denominator)
+		: "=&b"(result), [tmp] "=&r"(tmp), "=a"(dummy)
+		: "a"(m_denominator), [bn] "g"(b.m_numerator), [tn] "g"(m_numerator), [bd] "g"(b.m_denominator)
 		: "%rdx", "cc");
 	return result ? result ^ sign  // if sign is +1, only bit 0 of result is inverted, which does not change the sign of result (and cannot result in zero)
 								   // if sign is -1, all bits of result are inverted, which changes the sign of result (and again cannot result in zero)
@@ -1278,8 +1278,21 @@ void btConvexHullInternal::computeInternal(int start, int end, IntermediateHull&
 
 				return;
 			}
+			{
+				Vertex* v = originalVertices[start];
+				v->edges = NULL;
+				v->next = v;
+				v->prev = v;
+
+				result.minXy = v;
+				result.maxXy = v;
+				result.minYx = v;
+				result.maxYx = v;
+			}
+
+			return;
 		}
-		// lint -fallthrough
+
 		case 1:
 		{
 			Vertex* v = originalVertices[start];
@@ -2660,7 +2673,6 @@ btScalar btConvexHullComputer::compute(const void* coords, bool doubleCoords, in
 	}
 
 	vertices.resize(0);
-	original_vertex_index.resize(0);
 	edges.resize(0);
 	faces.resize(0);
 
@@ -2671,7 +2683,6 @@ btScalar btConvexHullComputer::compute(const void* coords, bool doubleCoords, in
 	{
 		btConvexHullInternal::Vertex* v = oldVertices[copied];
 		vertices.push_back(hull.getCoordinates(v));
-		original_vertex_index.push_back(v->point.index);
 		btConvexHullInternal::Edge* firstEdge = v->edges;
 		if (firstEdge)
 		{

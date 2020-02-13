@@ -140,11 +140,6 @@ public:
 		// lo and hi limits for variables (set to -/+ infinity on entry).
 		btScalar *m_lowerLimit, *m_upperLimit;
 
-		// findex vector for variables. see the LCP solver interface for a
-		// description of what this does. this is set to -1 on entry.
-		// note that the returned indexes are relative to the first index of
-		// the constraint.
-		int* findex;
 		// number of solver iterations
 		int m_numIterations;
 
@@ -357,76 +352,85 @@ SIMD_FORCE_INLINE btScalar btAdjustAngleToLimits(btScalar angleInRadians, btScal
 	}
 }
 
+// clang-format off
+
 ///do not change those serialization structures, it requires an updated sBulletDNAstr/sBulletDNAstr64
-struct btTypedConstraintFloatData
+struct	btTypedConstraintFloatData
 {
-	btRigidBodyFloatData* m_rbA;
-	btRigidBodyFloatData* m_rbB;
-	char* m_name;
+	btRigidBodyFloatData		*m_rbA;
+	btRigidBodyFloatData		*m_rbB;
+	char	*m_name;
 
-	int m_objectType;
-	int m_userConstraintType;
-	int m_userConstraintId;
-	int m_needsFeedback;
+	int	m_objectType;
+	int	m_userConstraintType;
+	int	m_userConstraintId;
+	int	m_needsFeedback;
 
-	float m_appliedImpulse;
-	float m_dbgDrawSize;
+	float	m_appliedImpulse;
+	float	m_dbgDrawSize;
 
-	int m_disableCollisionsBetweenLinkedBodies;
-	int m_overrideNumSolverIterations;
+	int	m_disableCollisionsBetweenLinkedBodies;
+	int	m_overrideNumSolverIterations;
 
-	float m_breakingImpulseThreshold;
-	int m_isEnabled;
+	float	m_breakingImpulseThreshold;
+	int		m_isEnabled;
+	
 };
+
+
 
 ///do not change those serialization structures, it requires an updated sBulletDNAstr/sBulletDNAstr64
 
 #define BT_BACKWARDS_COMPATIBLE_SERIALIZATION
 #ifdef BT_BACKWARDS_COMPATIBLE_SERIALIZATION
 ///this structure is not used, except for loading pre-2.82 .bullet files
-struct btTypedConstraintData
+struct	btTypedConstraintData
 {
-	btRigidBodyData* m_rbA;
-	btRigidBodyData* m_rbB;
-	char* m_name;
+	btRigidBodyData		*m_rbA;
+	btRigidBodyData		*m_rbB;
+	char	*m_name;
 
-	int m_objectType;
-	int m_userConstraintType;
-	int m_userConstraintId;
-	int m_needsFeedback;
+	int	m_objectType;
+	int	m_userConstraintType;
+	int	m_userConstraintId;
+	int	m_needsFeedback;
 
-	float m_appliedImpulse;
-	float m_dbgDrawSize;
+	float	m_appliedImpulse;
+	float	m_dbgDrawSize;
 
-	int m_disableCollisionsBetweenLinkedBodies;
-	int m_overrideNumSolverIterations;
+	int	m_disableCollisionsBetweenLinkedBodies;
+	int	m_overrideNumSolverIterations;
 
-	float m_breakingImpulseThreshold;
-	int m_isEnabled;
+	float	m_breakingImpulseThreshold;
+	int		m_isEnabled;
+	
 };
-#endif  //BACKWARDS_COMPATIBLE
+#endif //BACKWARDS_COMPATIBLE
 
-struct btTypedConstraintDoubleData
+struct	btTypedConstraintDoubleData
 {
-	btRigidBodyDoubleData* m_rbA;
-	btRigidBodyDoubleData* m_rbB;
-	char* m_name;
+	btRigidBodyDoubleData		*m_rbA;
+	btRigidBodyDoubleData		*m_rbB;
+	char	*m_name;
 
-	int m_objectType;
-	int m_userConstraintType;
-	int m_userConstraintId;
-	int m_needsFeedback;
+	int	m_objectType;
+	int	m_userConstraintType;
+	int	m_userConstraintId;
+	int	m_needsFeedback;
 
-	double m_appliedImpulse;
-	double m_dbgDrawSize;
+	double	m_appliedImpulse;
+	double	m_dbgDrawSize;
 
-	int m_disableCollisionsBetweenLinkedBodies;
-	int m_overrideNumSolverIterations;
+	int	m_disableCollisionsBetweenLinkedBodies;
+	int	m_overrideNumSolverIterations;
 
-	double m_breakingImpulseThreshold;
-	int m_isEnabled;
-	char padding[4];
+	double	m_breakingImpulseThreshold;
+	int		m_isEnabled;
+	char	padding[4];
+	
 };
+
+// clang-format on
 
 SIMD_FORCE_INLINE int btTypedConstraint::calculateSerializeBufferSize() const
 {

@@ -21,8 +21,13 @@ subject to the following restrictions:
 ///that is better portable and more predictable
 
 #include "btScalar.h"
-//#define BT_DEBUG_MEMORY_ALLOCATIONS 1
+
+///BT_DEBUG_MEMORY_ALLOCATIONS preprocessor can be set in build system
+///for regression tests to detect memory leaks
+///#define BT_DEBUG_MEMORY_ALLOCATIONS 1
 #ifdef BT_DEBUG_MEMORY_ALLOCATIONS
+
+int btDumpMemoryLeaks();
 
 #define btAlignedAlloc(a, b) \
 	btAlignedAllocInternal(a, b, __LINE__, __FILE__)
@@ -35,8 +40,8 @@ void* btAlignedAllocInternal(size_t size, int alignment, int line, char* filenam
 void btAlignedFreeInternal(void* ptr, int line, char* filename);
 
 #else
-void *btAlignedAllocInternal(size_t size, int alignment);
-void btAlignedFreeInternal(void *ptr);
+void* btAlignedAllocInternal(size_t size, int alignment);
+void btAlignedFreeInternal(void* ptr);
 
 #define btAlignedAlloc(size, alignment) btAlignedAllocInternal(size, alignment)
 #define btAlignedFree(ptr) btAlignedFreeInternal(ptr)

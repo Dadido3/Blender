@@ -78,34 +78,38 @@ struct btTriangleInfoMap : public btInternalTriangleInfoMap
 	void deSerialize(struct btTriangleInfoMapData& data);
 };
 
+// clang-format off
+
 ///those fields have to be float and not btScalar for the serialization to work properly
-struct btTriangleInfoData
+struct	btTriangleInfoData
 {
-	int m_flags;
-	float m_edgeV0V1Angle;
-	float m_edgeV1V2Angle;
-	float m_edgeV2V0Angle;
+	int			m_flags;
+	float	m_edgeV0V1Angle;
+	float	m_edgeV1V2Angle;
+	float	m_edgeV2V0Angle;
 };
 
-struct btTriangleInfoMapData
+struct	btTriangleInfoMapData
 {
-	int* m_hashTablePtr;
-	int* m_nextPtr;
-	btTriangleInfoData* m_valueArrayPtr;
-	int* m_keyArrayPtr;
+	int					*m_hashTablePtr;
+	int					*m_nextPtr;
+	btTriangleInfoData	*m_valueArrayPtr;
+	int					*m_keyArrayPtr;
 
-	float m_convexEpsilon;
-	float m_planarEpsilon;
-	float m_equalVertexThreshold;
-	float m_edgeDistanceThreshold;
-	float m_zeroAreaThreshold;
+	float	m_convexEpsilon;
+	float	m_planarEpsilon;
+	float	m_equalVertexThreshold; 
+	float	m_edgeDistanceThreshold;
+	float	m_zeroAreaThreshold;
 
-	int m_nextSize;
-	int m_hashTableSize;
-	int m_numValues;
-	int m_numKeys;
-	char m_padding[4];
+	int		m_nextSize;
+	int		m_hashTableSize;
+	int		m_numValues;
+	int		m_numKeys;
+	char	m_padding[4];
 };
+
+// clang-format on
 
 SIMD_FORCE_INLINE int btTriangleInfoMap::calculateSerializeBufferSize() const
 {
@@ -186,6 +190,13 @@ SIMD_FORCE_INLINE const char* btTriangleInfoMap::serialize(void* dataBuffer, btS
 		}
 		serializer->finalizeChunk(chunk, "int", BT_ARRAY_CODE, (void*)&m_keyArray[0]);
 	}
+
+	// Fill padding with zeros to appease msan.
+	tmapData->m_padding[0] = 0;
+	tmapData->m_padding[1] = 0;
+	tmapData->m_padding[2] = 0;
+	tmapData->m_padding[3] = 0;
+
 	return "btTriangleInfoMapData";
 }
 

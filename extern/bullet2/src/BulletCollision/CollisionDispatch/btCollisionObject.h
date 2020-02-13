@@ -77,13 +77,17 @@ protected:
 
 	int m_islandTag1;
 	int m_companionId;
+	int m_worldArrayIndex;  // index of object in world's collisionObjects array
 
 	mutable int m_activationState1;
 	mutable btScalar m_deactivationTime;
 
 	btScalar m_friction;
 	btScalar m_restitution;
-	btScalar m_rollingFriction;
+	btScalar m_rollingFriction;   //torsional friction orthogonal to contact normal (useful to stop spheres rolling forever)
+	btScalar m_spinningFriction;  // torsional friction around the contact normal (useful for grasping)
+	btScalar m_contactDamping;
+	btScalar m_contactStiffness;
 
 	///m_internalType is reserved to distinguish Bullet's btCollisionObject, btRigidBody, btSoftBody, btGhostObject etc.
 	///do not assign your own m_internalType unless you write a new dynamics object class.
@@ -93,7 +97,11 @@ protected:
 
 	void* m_userObjectPointer;
 
+	int m_userIndex2;
+
 	int m_userIndex;
+
+	int m_userIndex3;
 
 	///time of impact calculation
 	btScalar m_hitFraction;
@@ -112,6 +120,8 @@ protected:
 	///internal update revision number. It will be increased when the object changes. This allows some subsystems to perform lazy evaluation.
 	int m_updateRevision;
 
+	btVector3 m_customDebugColorRGB;
+
 public:
 	BT_DECLARE_ALIGNED_ALLOCATOR();
 
@@ -122,8 +132,12 @@ public:
 		CF_NO_CONTACT_RESPONSE = 4,
 		CF_CUSTOM_MATERIAL_CALLBACK = 8,  //this allows per-triangle material (friction/restitution)
 		CF_CHARACTER_OBJECT = 16,
-		CF_DISABLE_VISUALIZE_OBJECT = 32,         //disable debug drawing
-		CF_DISABLE_SPU_COLLISION_PROCESSING = 64  //disable parallel/SPU processing
+		CF_DISABLE_VISUALIZE_OBJECT = 32,          //disable debug drawing
+		CF_DISABLE_SPU_COLLISION_PROCESSING = 64,  //disable parallel/SPU processing
+		CF_HAS_CONTACT_STIFFNESS_DAMPING = 128,
+		CF_HAS_CUSTOM_DEBUG_RENDERING_COLOR = 256,
+		CF_HAS_FRICTION_ANCHOR = 512,
+		CF_HAS_COLLISION_SOUND_TRIGGER = 1024
 	};
 
 	enum CollisionObjectTypes
@@ -310,6 +324,39 @@ public:
 	{
 		return m_rollingFriction;
 	}
+	void setSpinningFriction(btScalar frict)
+	{
+		m_updateRevision++;
+		m_spinningFriction = frict;
+	}
+	btScalar getSpinningFriction() const
+	{
+		return m_spinningFriction;
+	}
+	void setContactStiffnessAndDamping(btScalar stiffness, btScalar damping)
+	{
+		m_updateRevision++;
+		m_contactStiffness = stiffness;
+		m_contactDamping = damping;
+
+		m_collisionFlags |= CF_HAS_CONTACT_STIFFNESS_DAMPING;
+
+		//avoid divisions by zero...
+		if (m_contactStiffness < SIMD_EPSILON)
+		{
+			m_contactStiffness = SIMD_EPSILON;
+		}
+	}
+
+	btScalar getContactStiffness() const
+	{
+		return m_contactStiffness;
+	}
+
+	btScalar getContactDamping() const
+	{
+		return m_contactDamping;
+	}
 
 	///reserved for Bullet internal usage
 	int getInternalType() const
@@ -406,6 +453,17 @@ public:
 		m_companionId = id;
 	}
 
+	SIMD_FORCE_INLINE int getWorldArrayIndex() const
+	{
+		return m_worldArrayIndex;
+	}
+
+	// only should be called by CollisionWorld
+	void setWorldArrayIndex(int ix)
+	{
+		m_worldArrayIndex = ix;
+	}
+
 	SIMD_FORCE_INLINE btScalar getHitFraction() const
 	{
 		return m_hitFraction;
@@ -464,6 +522,17 @@ public:
 	{
 		return m_userIndex;
 	}
+
+	int getUserIndex2() const
+	{
+		return m_userIndex2;
+	}
+
+	int getUserIndex3() const
+	{
+		return m_userIndex3;
+	}
+
 	///users can point to their objects, userPointer is not used by Bullet
 	void setUserPointer(void* userPointer)
 	{
@@ -476,9 +545,40 @@ public:
 		m_userIndex = index;
 	}
 
+	void setUserIndex2(int index)
+	{
+		m_userIndex2 = index;
+	}
+
+	void setUserIndex3(int index)
+	{
+		m_userIndex3 = index;
+	}
+
 	int getUpdateRevisionInternal() const
 	{
 		return m_updateRevision;
+	}
+
+	void setCustomDebugColor(const btVector3& colorRGB)
+	{
+		m_customDebugColorRGB = colorRGB;
+		m_collisionFlags |= CF_HAS_CUSTOM_DEBUG_RENDERING_COLOR;
+	}
+
+	void removeCustomDebugColor()
+	{
+		m_collisionFlags &= ~CF_HAS_CUSTOM_DEBUG_RENDERING_COLOR;
+	}
+
+	bool getCustomDebugColor(btVector3 & colorRGB) const
+	{
+		bool hasCustomColor = (0 != (m_collisionFlags & CF_HAS_CUSTOM_DEBUG_RENDERING_COLOR));
+		if (hasCustomColor)
+		{
+			colorRGB = m_customDebugColorRGB;
+		}
+		return hasCustomColor;
 	}
 
 	inline bool checkCollideWith(const btCollisionObject* co) const
@@ -497,71 +597,78 @@ public:
 	virtual void serializeSingleObject(class btSerializer * serializer) const;
 };
 
+// clang-format off
+
 ///do not change those serialization structures, it requires an updated sBulletDNAstr/sBulletDNAstr64
-struct btCollisionObjectDoubleData
+struct	btCollisionObjectDoubleData
 {
-	void* m_broadphaseHandle;
-	void* m_collisionShape;
-	btCollisionShapeData* m_rootCollisionShape;
-	char* m_name;
+	void					*m_broadphaseHandle;
+	void					*m_collisionShape;
+	btCollisionShapeData	*m_rootCollisionShape;
+	char					*m_name;
 
-	btTransformDoubleData m_worldTransform;
-	btTransformDoubleData m_interpolationWorldTransform;
-	btVector3DoubleData m_interpolationLinearVelocity;
-	btVector3DoubleData m_interpolationAngularVelocity;
-	btVector3DoubleData m_anisotropicFriction;
-	double m_contactProcessingThreshold;
-	double m_deactivationTime;
-	double m_friction;
-	double m_rollingFriction;
-	double m_restitution;
-	double m_hitFraction;
-	double m_ccdSweptSphereRadius;
-	double m_ccdMotionThreshold;
-
-	int m_hasAnisotropicFriction;
-	int m_collisionFlags;
-	int m_islandTag1;
-	int m_companionId;
-	int m_activationState1;
-	int m_internalType;
-	int m_checkCollideWith;
-
-	char m_padding[4];
+	btTransformDoubleData	m_worldTransform;
+	btTransformDoubleData	m_interpolationWorldTransform;
+	btVector3DoubleData		m_interpolationLinearVelocity;
+	btVector3DoubleData		m_interpolationAngularVelocity;
+	btVector3DoubleData		m_anisotropicFriction;
+	double					m_contactProcessingThreshold;	
+	double					m_deactivationTime;
+	double					m_friction;
+	double					m_rollingFriction;
+	double                  m_contactDamping;
+	double                  m_contactStiffness;
+	double					m_restitution;
+	double					m_hitFraction; 
+	double					m_ccdSweptSphereRadius;
+	double					m_ccdMotionThreshold;
+	int						m_hasAnisotropicFriction;
+	int						m_collisionFlags;
+	int						m_islandTag1;
+	int						m_companionId;
+	int						m_activationState1;
+	int						m_internalType;
+	int						m_checkCollideWith;
+	int						m_collisionFilterGroup;
+	int						m_collisionFilterMask;
+	int						m_uniqueId;//m_uniqueId is introduced for paircache. could get rid of this, by calculating the address offset etc.
 };
 
 ///do not change those serialization structures, it requires an updated sBulletDNAstr/sBulletDNAstr64
-struct btCollisionObjectFloatData
+struct	btCollisionObjectFloatData
 {
-	void* m_broadphaseHandle;
-	void* m_collisionShape;
-	btCollisionShapeData* m_rootCollisionShape;
-	char* m_name;
+	void					*m_broadphaseHandle;
+	void					*m_collisionShape;
+	btCollisionShapeData	*m_rootCollisionShape;
+	char					*m_name;
 
-	btTransformFloatData m_worldTransform;
-	btTransformFloatData m_interpolationWorldTransform;
-	btVector3FloatData m_interpolationLinearVelocity;
-	btVector3FloatData m_interpolationAngularVelocity;
-	btVector3FloatData m_anisotropicFriction;
-	float m_contactProcessingThreshold;
-	float m_deactivationTime;
-	float m_friction;
-	float m_rollingFriction;
-
-	float m_restitution;
-	float m_hitFraction;
-	float m_ccdSweptSphereRadius;
-	float m_ccdMotionThreshold;
-
-	int m_hasAnisotropicFriction;
-	int m_collisionFlags;
-	int m_islandTag1;
-	int m_companionId;
-	int m_activationState1;
-	int m_internalType;
-	int m_checkCollideWith;
-	char m_padding[4];
+	btTransformFloatData	m_worldTransform;
+	btTransformFloatData	m_interpolationWorldTransform;
+	btVector3FloatData		m_interpolationLinearVelocity;
+	btVector3FloatData		m_interpolationAngularVelocity;
+	btVector3FloatData		m_anisotropicFriction;
+	float					m_contactProcessingThreshold;	
+	float					m_deactivationTime;
+	float					m_friction;
+	float					m_rollingFriction;
+	float                   m_contactDamping;
+    float                   m_contactStiffness;
+	float					m_restitution;
+	float					m_hitFraction; 
+	float					m_ccdSweptSphereRadius;
+	float					m_ccdMotionThreshold;
+	int						m_hasAnisotropicFriction;
+	int						m_collisionFlags;
+	int						m_islandTag1;
+	int						m_companionId;
+	int						m_activationState1;
+	int						m_internalType;
+	int						m_checkCollideWith;
+	int						m_collisionFilterGroup;
+	int						m_collisionFilterMask;
+	int						m_uniqueId;
 };
+// clang-format on
 
 SIMD_FORCE_INLINE int btCollisionObject::calculateSerializeBufferSize() const
 {

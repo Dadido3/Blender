@@ -53,6 +53,8 @@ public:
 		return getUnscaledPoints();
 	}
 
+	void optimizeConvexHull();
+
 	SIMD_FORCE_INLINE btVector3 getScaledPoint(int i) const
 	{
 		return m_unscaledPoints[i] * m_localScaling;
@@ -89,17 +91,22 @@ public:
 	virtual const char* serialize(void* dataBuffer, btSerializer* serializer) const;
 };
 
+// clang-format off
+
 ///do not change those serialization structures, it requires an updated sBulletDNAstr/sBulletDNAstr64
-struct btConvexHullShapeData
+struct	btConvexHullShapeData
 {
-	btConvexInternalShapeData m_convexInternalShapeData;
+	btConvexInternalShapeData	m_convexInternalShapeData;
 
-	btVector3FloatData* m_unscaledPointsFloatPtr;
-	btVector3DoubleData* m_unscaledPointsDoublePtr;
+	btVector3FloatData	*m_unscaledPointsFloatPtr;
+	btVector3DoubleData	*m_unscaledPointsDoublePtr;
 
-	int m_numUnscaledPoints;
+	int		m_numUnscaledPoints;
 	char m_padding3[4];
+
 };
+
+// clang-format on
 
 SIMD_FORCE_INLINE int btConvexHullShape::calculateSerializeBufferSize() const
 {

@@ -163,9 +163,9 @@ public:
 	virtual void drawTransform(const btTransform& transform, btScalar orthoLen)
 	{
 		btVector3 start = transform.getOrigin();
-		drawLine(start, start + transform.getBasis() * btVector3(orthoLen, 0, 0), btVector3(0.7f, 0, 0));
-		drawLine(start, start + transform.getBasis() * btVector3(0, orthoLen, 0), btVector3(0, 0.7f, 0));
-		drawLine(start, start + transform.getBasis() * btVector3(0, 0, orthoLen), btVector3(0, 0, 0.7f));
+		drawLine(start, start + transform.getBasis() * btVector3(orthoLen, 0, 0), btVector3(btScalar(1.), btScalar(0.3), btScalar(0.3)));
+		drawLine(start, start + transform.getBasis() * btVector3(0, orthoLen, 0), btVector3(btScalar(0.3), btScalar(1.), btScalar(0.3)));
+		drawLine(start, start + transform.getBasis() * btVector3(0, 0, orthoLen), btVector3(btScalar(0.3), btScalar(0.3), btScalar(1.)));
 	}
 
 	virtual void drawArc(const btVector3& center, const btVector3& normal, const btVector3& axis, btScalar radiusA, btScalar radiusB, btScalar minAngle, btScalar maxAngle,
@@ -459,6 +459,10 @@ public:
 		btVector3 pt3 = planeOrigin - vec1 * vecLen;
 		drawLine(transform * pt0, transform * pt1, color);
 		drawLine(transform * pt2, transform * pt3, color);
+	}
+
+	virtual void clearLines()
+	{
 	}
 
 	virtual void flushLines()

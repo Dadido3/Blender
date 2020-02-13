@@ -125,6 +125,13 @@ public:
 		m_el[2] = other.m_el[2];
 		return *this;
 	}
+    
+    SIMD_FORCE_INLINE btMatrix3x3(const btVector3& v0, const btVector3& v1, const btVector3& v2)
+    {
+        m_el[0] = v0;
+        m_el[1] = v1;
+        m_el[2] = v2;
+    }
 
 #endif
 
@@ -285,7 +292,7 @@ public:
 	/** @brief Set the matrix from euler angles YPR around ZYX axes
 	* @param eulerX Roll about X axis
 	* @param eulerY Pitch around Y axis
-	* @param eulerZ Yaw aboud Z axis
+	* @param eulerZ Yaw about Z axis
 	* 
 	* These angles are used to produce a rotation matrix. The euler
 	* angles are applied in ZYX order. I.e a vector is first rotated 
@@ -523,7 +530,7 @@ public:
 	};
 
 	/**@brief Get the matrix represented as euler angles around ZYX
-	* @param yaw Yaw around X axis
+	* @param yaw Yaw around Z axis
 	* @param pitch Pitch around Y axis
 	* @param roll around X axis 
 	* @param solution_number Which solution of two possible solutions ( 1 or 2) are possible values*/
@@ -656,14 +663,39 @@ public:
 		return m_el[0].z() * v.x() + m_el[1].z() * v.y() + m_el[2].z() * v.z();
 	}
 
+	///extractRotation is from "A robust method to extract the rotational part of deformations"
+	///See http://dl.acm.org/citation.cfm?doid=2994258.2994269
+	///decomposes a matrix A in a orthogonal matrix R and a
+	///symmetric matrix S:
+	///A = R*S.
+	///note that R can include both rotation and scaling.
+	SIMD_FORCE_INLINE void extractRotation(btQuaternion & q, btScalar tolerance = 1.0e-9, int maxIter = 100)
+	{
+		int iter = 0;
+		btScalar w;
+		const btMatrix3x3& A = *this;
+		for (iter = 0; iter < maxIter; iter++)
+		{
+			btMatrix3x3 R(q);
+			btVector3 omega = (R.getColumn(0).cross(A.getColumn(0)) + R.getColumn(1).cross(A.getColumn(1)) + R.getColumn(2).cross(A.getColumn(2))) * (btScalar(1.0) / btFabs(R.getColumn(0).dot(A.getColumn(0)) + R.getColumn(1).dot(A.getColumn(1)) + R.getColumn(2).dot(A.getColumn(2))) +
+																																					  tolerance);
+			w = omega.norm();
+			if (w < tolerance)
+				break;
+			q = btQuaternion(btVector3((btScalar(1.0) / w) * omega), w) *
+				q;
+			q.normalize();
+		}
+	}
+
 	/**@brief diagonalizes this matrix by the Jacobi method.
 	* @param rot stores the rotation from the coordinate system in which the matrix is diagonal to the original
-	* coordinate system, i.e., old_this = rot * new_this * rot^T. 
+	* coordinate system, i.e., old_this = rot * new_this * rot^T.
 	* @param threshold See iteration
-	* @param iteration The iteration stops when all off-diagonal elements are less than the threshold multiplied 
-	* by the sum of the absolute values of the diagonal, or when maxSteps have been executed. 
-	* 
-	* Note that this matrix is assumed to be symmetric. 
+	* @param iteration The iteration stops when all off-diagonal elements are less than the threshold multiplied
+	* by the sum of the absolute values of the diagonal, or when maxSteps have been executed.
+	*
+	* Note that this matrix is assumed to be symmetric.
 	*/
 	void diagonalize(btMatrix3x3 & rot, btScalar threshold, int maxSteps)
 	{
@@ -1046,7 +1078,8 @@ btMatrix3x3::inverse() const
 {
 	btVector3 co(cofac(1, 1, 2, 2), cofac(1, 2, 2, 0), cofac(1, 0, 2, 1));
 	btScalar det = (*this)[0].dot(co);
-	btFullAssert(det != btScalar(0.0));
+	//btFullAssert(det != btScalar(0.0));
+	btAssert(det != btScalar(0.0));
 	btScalar s = btScalar(1.0) / det;
 	return btMatrix3x3(co.x() * s, cofac(0, 2, 2, 1) * s, cofac(0, 1, 1, 2) * s,
 					   co.y() * s, cofac(0, 0, 2, 2) * s, cofac(0, 2, 1, 0) * s,
@@ -1327,7 +1360,9 @@ SIMD_FORCE_INLINE bool operator==(const btMatrix3x3& m1, const btMatrix3x3& m2)
 	c0 = _mm_and_ps(c0, c1);
 	c0 = _mm_and_ps(c0, c2);
 
-	return (0x7 == _mm_movemask_ps((__m128)c0));
+	int m = _mm_movemask_ps((__m128)c0);
+	return (0x7 == (m & 0x7));
+
 #else
 	return (m1[0][0] == m2[0][0] && m1[1][0] == m2[1][0] && m1[2][0] == m2[2][0] &&
 			m1[0][1] == m2[0][1] && m1[1][1] == m2[1][1] && m1[2][1] == m2[2][1] &&

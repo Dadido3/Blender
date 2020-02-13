@@ -16,7 +16,8 @@ subject to the following restrictions:
 ///btDbvtBroadphase implementation by Nathanael Presson
 
 #include "btDbvtBroadphase.h"
-
+#include "LinearMath/btThreads.h"
+btScalar gDbvtMargin = btScalar(0.05);
 //
 // Profiling
 //
@@ -150,6 +151,11 @@ btDbvtBroadphase::btDbvtBroadphase(btOverlappingPairCache* paircache)
 	{
 		m_stageRoots[i] = 0;
 	}
+#if BT_THREADSAFE
+	m_rayTestStacks.resize(BT_MAX_THREAD_COUNT);
+#else
+	m_rayTestStacks.resize(1);
+#endif
 #if DBVT_BP_PROFILE
 	clear(m_profiling);
 #endif
@@ -170,10 +176,9 @@ btBroadphaseProxy* btDbvtBroadphase::createProxy(const btVector3& aabbMin,
 												 const btVector3& aabbMax,
 												 int /*shapeType*/,
 												 void* userPtr,
-												 short int collisionFilterGroup,
-												 short int collisionFilterMask,
-												 btDispatcher* /*dispatcher*/,
-												 void* /*multiSapProxy*/)
+												 int collisionFilterGroup,
+												 int collisionFilterMask,
+												 btDispatcher* /*dispatcher*/)
 {
 	btDbvtProxy* proxy = new (btAlignedAlloc(sizeof(btDbvtProxy), 16)) btDbvtProxy(aabbMin, aabbMax, userPtr,
 																				   collisionFilterGroup,
@@ -235,6 +240,25 @@ struct BroadphaseRayTester : btDbvt::ICollide
 void btDbvtBroadphase::rayTest(const btVector3& rayFrom, const btVector3& rayTo, btBroadphaseRayCallback& rayCallback, const btVector3& aabbMin, const btVector3& aabbMax)
 {
 	BroadphaseRayTester callback(rayCallback);
+	btAlignedObjectArray<const btDbvtNode*>* stack = &m_rayTestStacks[0];
+#if BT_THREADSAFE
+	// for this function to be threadsafe, each thread must have a separate copy
+	// of this stack.  This could be thread-local static to avoid dynamic allocations,
+	// instead of just a local.
+	int threadIndex = btGetCurrentThreadIndex();
+	btAlignedObjectArray<const btDbvtNode*> localStack;
+	//todo(erwincoumans, "why do we get tsan issue here?")
+	if (0)//threadIndex < m_rayTestStacks.size())
+	//if (threadIndex < m_rayTestStacks.size())
+	{
+		// use per-thread preallocated stack if possible to avoid dynamic allocations
+		stack = &m_rayTestStacks[threadIndex];
+	}
+	else
+	{
+		stack = &localStack;
+	}
+#endif
 
 	m_sets[0].rayTestInternal(m_sets[0].m_root,
 							  rayFrom,
@@ -244,6 +268,7 @@ void btDbvtBroadphase::rayTest(const btVector3& rayFrom, const btVector3& rayTo,
 							  rayCallback.m_lambda_max,
 							  aabbMin,
 							  aabbMax,
+							  *stack,
 							  callback);
 
 	m_sets[1].rayTestInternal(m_sets[1].m_root,
@@ -254,6 +279,7 @@ void btDbvtBroadphase::rayTest(const btVector3& rayFrom, const btVector3& rayTo,
 							  rayCallback.m_lambda_max,
 							  aabbMin,
 							  aabbMax,
+							  *stack,
 							  callback);
 }
 
@@ -313,11 +339,8 @@ void btDbvtBroadphase::setAabb(btBroadphaseProxy* absproxy,
 				if (delta[1] < 0) velocity[1] = -velocity[1];
 				if (delta[2] < 0) velocity[2] = -velocity[2];
 				if (
-#ifdef DBVT_BP_MARGIN
-					m_sets[0].update(proxy->leaf, aabb, velocity, DBVT_BP_MARGIN)
-#else
-					m_sets[0].update(proxy->leaf, aabb, velocity)
-#endif
+					m_sets[0].update(proxy->leaf, aabb, velocity, gDbvtMargin)
+
 				)
 				{
 					++m_updates_done;
@@ -517,7 +540,9 @@ void btDbvtBroadphase::collide(btDispatcher* dispatcher)
 	btDbvtProxy* current = m_stageRoots[m_stageCurrent];
 	if (current)
 	{
+#if DBVT_BP_ACCURATESLEEPING
 		btDbvtTreeCollider collider(this);
+#endif
 		do
 		{
 			btDbvtProxy* next = current->links[1];

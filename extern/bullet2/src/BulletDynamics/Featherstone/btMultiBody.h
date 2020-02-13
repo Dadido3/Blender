@@ -65,7 +65,7 @@ public:
 	virtual ~btMultiBody();
 
 	//note: fixed link collision with parent is always disabled
-	void setupFixed(int linkIndex,
+	void setupFixed(int i, //linkIndex
 					btScalar mass,
 					const btVector3 &inertia,
 					int parent,
@@ -83,7 +83,7 @@ public:
 						const btVector3 &thisPivotToThisComOffset,
 						bool disableParentCollision);
 
-	void setupRevolute(int linkIndex,  // 0 to num_links-1
+	void setupRevolute(int i,  // 0 to num_links-1
 					   btScalar mass,
 					   const btVector3 &inertia,
 					   int parentIndex,
@@ -93,7 +93,7 @@ public:
 					   const btVector3 &thisPivotToThisComOffset,    // vector from joint axis to my COM, in MY frame
 					   bool disableParentCollision = false);
 
-	void setupSpherical(int linkIndex,  // 0 to num_links-1
+	void setupSpherical(int i,  // linkIndex, 0 to num_links-1
 						btScalar mass,
 						const btVector3 &inertia,
 						int parent,
@@ -134,6 +134,24 @@ public:
 		return m_baseCollider;
 	}
 
+	const btMultiBodyLinkCollider *getLinkCollider(int index) const
+	{
+		if (index >= 0 && index < getNumLinks())
+		{
+			return getLink(index).m_collider;
+		}
+		return 0;
+	}
+
+	btMultiBodyLinkCollider *getLinkCollider(int index)
+	{
+		if (index >= 0 && index < getNumLinks())
+		{
+			return getLink(index).m_collider;
+		}
+		return 0;
+	}
+
 	//
 	// get parent
 	// input: link num from 0 to num_links-1
@@ -164,7 +182,10 @@ public:
 	// get/set pos/vel/rot/omega for the base link
 	//
 
-	const btVector3 &getBasePos() const { return m_basePos; }  // in world frame
+	const btVector3 &getBasePos() const 
+	{ 
+		return m_basePos; 
+	}  // in world frame
 	const btVector3 getBaseVel() const
 	{
 		return btVector3(m_realBuf[3], m_realBuf[4], m_realBuf[5]);
@@ -172,12 +193,24 @@ public:
 	const btQuaternion &getWorldToBaseRot() const
 	{
 		return m_baseQuat;
-	}                                                                                               // rotates world vectors into base frame
+	}
+    
+    const btVector3 &getInterpolateBasePos() const
+    {
+        return m_basePos_interpolate;
+    }  // in world frame
+    const btQuaternion &getInterpolateWorldToBaseRot() const
+    {
+        return m_baseQuat_interpolate;
+    }
+    
+    // rotates world vectors into base frame
 	btVector3 getBaseOmega() const { return btVector3(m_realBuf[0], m_realBuf[1], m_realBuf[2]); }  // in world frame
 
 	void setBasePos(const btVector3 &pos)
 	{
 		m_basePos = pos;
+        m_basePos_interpolate = pos;
 	}
 
 	void setBaseWorldTransform(const btTransform &tr)
@@ -203,6 +236,7 @@ public:
 	void setWorldToBaseRot(const btQuaternion &rot)
 	{
 		m_baseQuat = rot;  //m_baseQuat asumed to ba alias!?
+        m_baseQuat_interpolate = rot;
 	}
 	void setBaseOmega(const btVector3 &omega)
 	{
@@ -226,8 +260,10 @@ public:
 
 	void setJointPos(int i, btScalar q);
 	void setJointVel(int i, btScalar qdot);
-	void setJointPosMultiDof(int i, btScalar *q);
-	void setJointVelMultiDof(int i, btScalar *qdot);
+	void setJointPosMultiDof(int i, const double *q);
+	void setJointVelMultiDof(int i, const double *qdot);
+	void setJointPosMultiDof(int i, const float *q);
+	void setJointVelMultiDof(int i, const float *qdot);
 
 	//
 	// direct access to velocities as a vector of 6 + num_links elements.
@@ -237,6 +273,11 @@ public:
 	{
 		return &m_realBuf[0];
 	}
+    
+    const btScalar *getDeltaVelocityVector() const
+    {
+        return &m_deltaV[0];
+    }
 	/*    btScalar * getVelocityVector() 
 	{ 
 		return &real_buf[0]; 
@@ -250,14 +291,21 @@ public:
 
 	const btVector3 &getRVector(int i) const;              // vector from COM(parent(i)) to COM(i), in frame i's coords
 	const btQuaternion &getParentToLocalRot(int i) const;  // rotates vectors in frame parent(i) to vectors in frame i.
+    const btVector3 &getInterpolateRVector(int i) const;              // vector from COM(parent(i)) to COM(i), in frame i's coords
+    const btQuaternion &getInterpolateParentToLocalRot(int i) const;  // rotates vectors in frame parent(i) to vectors in frame i.
 
 	//
 	// transform vectors in local frame of link i to world frame (or vice versa)
 	//
-	btVector3 localPosToWorld(int i, const btVector3 &vec) const;
-	btVector3 localDirToWorld(int i, const btVector3 &vec) const;
-	btVector3 worldPosToLocal(int i, const btVector3 &vec) const;
-	btVector3 worldDirToLocal(int i, const btVector3 &vec) const;
+	btVector3 localPosToWorld(int i, const btVector3 &local_pos) const;
+	btVector3 localDirToWorld(int i, const btVector3 &local_dir) const;
+	btVector3 worldPosToLocal(int i, const btVector3 &world_pos) const;
+	btVector3 worldDirToLocal(int i, const btVector3 &world_dir) const;
+
+	//
+	// transform a frame in local coordinate to a frame in world coordinate
+	//
+	btMatrix3x3 localFrameToWorld(int i, const btMatrix3x3 &local_frame) const;
 
 	//
 	// calculate kinetic energy and angular momentum
@@ -324,17 +372,20 @@ public:
 															  btAlignedObjectArray<btScalar> & scratch_r,
 															  btAlignedObjectArray<btVector3> & scratch_v,
 															  btAlignedObjectArray<btMatrix3x3> & scratch_m,
-															  bool isConstraintPass = false);
+															  bool isConstraintPass,
+                                                              bool jointFeedbackInWorldSpace,
+                                                              bool jointFeedbackInJointFrame
+                                                              );
 
 	///stepVelocitiesMultiDof is deprecated, use computeAccelerationsArticulatedBodyAlgorithmMultiDof instead
-	void stepVelocitiesMultiDof(btScalar dt,
-								btAlignedObjectArray<btScalar> & scratch_r,
-								btAlignedObjectArray<btVector3> & scratch_v,
-								btAlignedObjectArray<btMatrix3x3> & scratch_m,
-								bool isConstraintPass = false)
-	{
-		computeAccelerationsArticulatedBodyAlgorithmMultiDof(dt, scratch_r, scratch_v, scratch_m, isConstraintPass);
-	}
+	//void stepVelocitiesMultiDof(btScalar dt,
+	//							btAlignedObjectArray<btScalar> & scratch_r,
+	//							btAlignedObjectArray<btVector3> & scratch_v,
+	//							btAlignedObjectArray<btMatrix3x3> & scratch_m,
+	//							bool isConstraintPass = false)
+	//{
+	//	computeAccelerationsArticulatedBodyAlgorithmMultiDof(dt, scratch_r, scratch_v, scratch_m, isConstraintPass, false, false);
+	//}
 
 	// calcAccelerationDeltasMultiDof
 	// input: force vector (in same format as jacobian, i.e.:
@@ -390,6 +441,9 @@ public:
 
 	// timestep the positions (given current velocities).
 	void stepPositionsMultiDof(btScalar dt, btScalar *pq = 0, btScalar *pqd = 0);
+    
+    // predict the positions
+    void predictPositionsMultiDof(btScalar dt);
 
 	//
 	// contacts
@@ -423,7 +477,10 @@ public:
 	//
 	void setCanSleep(bool canSleep)
 	{
-		m_canSleep = canSleep;
+		if (m_canWakeup)
+		{
+			m_canSleep = canSleep;
+		}
 	}
 
 	bool getCanSleep() const
@@ -431,6 +488,15 @@ public:
 		return m_canSleep;
 	}
 
+	bool getCanWakeup() const
+	{
+		return m_canWakeup;
+	}
+	
+	void setCanWakeup(bool canWakeup) 
+	{
+		m_canWakeup = canWakeup;
+	}
 	bool isAwake() const { return m_awake; }
 	void wakeUp();
 	void goToSleep();
@@ -439,6 +505,11 @@ public:
 	bool hasFixedBase() const
 	{
 		return m_fixedBase;
+	}
+
+	void setFixedBase(bool fixedBase)
+	{
+		m_fixedBase = fixedBase;
 	}
 
 	int getCompanionId() const
@@ -528,9 +599,12 @@ public:
 	{
 		return m_internalNeedsJointFeedback;
 	}
-	void forwardKinematics(btAlignedObjectArray<btQuaternion> & scratch_q, btAlignedObjectArray<btVector3> & scratch_m);
+	void forwardKinematics(btAlignedObjectArray<btQuaternion>& world_to_local, btAlignedObjectArray<btVector3> & local_origin);
 
-	void updateCollisionObjectWorldTransforms(btAlignedObjectArray<btQuaternion> & scratch_q, btAlignedObjectArray<btVector3> & scratch_m);
+	void compTreeLinkVelocities(btVector3 * omega, btVector3 * vel) const;
+
+	void updateCollisionObjectWorldTransforms(btAlignedObjectArray<btQuaternion> & world_to_local, btAlignedObjectArray<btVector3> & local_origin);
+    void updateCollisionObjectInterpolationWorldTransforms(btAlignedObjectArray<btQuaternion> & world_to_local, btAlignedObjectArray<btVector3> & local_origin);
 
 	virtual int calculateSerializeBufferSize() const;
 
@@ -547,13 +621,52 @@ public:
 		m_baseName = name;
 	}
 
+	///users can point to their objects, userPointer is not used by Bullet
+	void *getUserPointer() const
+	{
+		return m_userObjectPointer;
+	}
+
+	int getUserIndex() const
+	{
+		return m_userIndex;
+	}
+
+	int getUserIndex2() const
+	{
+		return m_userIndex2;
+	}
+	///users can point to their objects, userPointer is not used by Bullet
+	void setUserPointer(void *userPointer)
+	{
+		m_userObjectPointer = userPointer;
+	}
+
+	///users can point to their objects, userPointer is not used by Bullet
+	void setUserIndex(int index)
+	{
+		m_userIndex = index;
+	}
+
+	void setUserIndex2(int index)
+	{
+		m_userIndex2 = index;
+	}
+
+	static void spatialTransform(const btMatrix3x3 &rotation_matrix,  // rotates vectors in 'from' frame to vectors in 'to' frame
+		const btVector3 &displacement,     // vector from origin of 'from' frame to origin of 'to' frame, in 'to' coordinates
+		const btVector3 &top_in,       // top part of input vector
+		const btVector3 &bottom_in,    // bottom part of input vector
+		btVector3 &top_out,         // top part of output vector
+		btVector3 &bottom_out);      // bottom part of output vector
+
+
+
 private:
 	btMultiBody(const btMultiBody &);     // not implemented
 	void operator=(const btMultiBody &);  // not implemented
 
-	void compTreeLinkVelocities(btVector3 * omega, btVector3 * vel) const;
-
-	void solveImatrix(const btVector3 &rhs_top, const btVector3 &rhs_bot, float result[6]) const;
+	void solveImatrix(const btVector3 &rhs_top, const btVector3 &rhs_bot, btScalar result[6]) const;
 	void solveImatrix(const btSpatialForceVector &rhs, btSpatialMotionVector &result) const;
 
 	void updateLinksDofOffsets()
@@ -575,7 +688,9 @@ private:
 	const char *m_baseName;                   //memory needs to be manager by user!
 
 	btVector3 m_basePos;      // position of COM of base (world frame)
+    btVector3 m_basePos_interpolate;      // position of interpolated COM of base (world frame)
 	btQuaternion m_baseQuat;  // rotates world points into base frame
+    btQuaternion m_baseQuat_interpolate;  
 
 	btScalar m_baseMass;      // mass of the base
 	btVector3 m_baseInertia;  // inertia of the base (in local frame; diagonal)
@@ -587,7 +702,6 @@ private:
 	btVector3 m_baseConstraintTorque;  // external torque applied to base. World frame.
 
 	btAlignedObjectArray<btMultibodyLink> m_links;  // array of m_links, excluding the base. index from 0 to num_links-1.
-	btAlignedObjectArray<btMultiBodyLinkCollider *> m_colliders;
 
 	//
 	// realBuf:
@@ -613,13 +727,19 @@ private:
 	btMatrix3x3 m_cachedInertiaTopRight;
 	btMatrix3x3 m_cachedInertiaLowerLeft;
 	btMatrix3x3 m_cachedInertiaLowerRight;
+	bool m_cachedInertiaValid;
 
 	bool m_fixedBase;
 
 	// Sleep parameters.
 	bool m_awake;
 	bool m_canSleep;
+	bool m_canWakeup;
 	btScalar m_sleepTimer;
+
+	void *m_userObjectPointer;
+	int m_userIndex2;
+	int m_userIndex;
 
 	int m_companionId;
 	btScalar m_linearDamping;
@@ -631,7 +751,10 @@ private:
 
 	bool __posUpdated;
 	int m_dofCount, m_posVarCnt;
+
 	bool m_useRK4, m_useGlobalVelocities;
+	//for global velocities, see 8.3.2B Proposed resolution in Jakub Stepien PhD Thesis
+	//https://drive.google.com/file/d/0Bz3vEa19XOYGNWdZWGpMdUdqVmZ5ZVBOaEh4ZnpNaUxxZFNV/view?usp=sharing
 
 	///the m_needsJointFeedback gets updated/computed during the stepVelocitiesMultiDof and it for internal usage only
 	bool m_internalNeedsJointFeedback;
@@ -640,16 +763,17 @@ private:
 struct btMultiBodyLinkDoubleData
 {
 	btQuaternionDoubleData m_zeroRotParentToThis;
-	btVector3DoubleData m_parentComToThisComOffset;
+	btVector3DoubleData m_parentComToThisPivotOffset;
 	btVector3DoubleData m_thisPivotToThisComOffset;
 	btVector3DoubleData m_jointAxisTop[6];
 	btVector3DoubleData m_jointAxisBottom[6];
 
-	char *m_linkName;
-	char *m_jointName;
-	btCollisionObjectDoubleData *m_linkCollider;
-
 	btVector3DoubleData m_linkInertia;  // inertia of the base (in local frame; diagonal)
+	btVector3DoubleData m_absFrameTotVelocityTop;
+	btVector3DoubleData m_absFrameTotVelocityBottom;
+	btVector3DoubleData m_absFrameLocVelocityTop;
+	btVector3DoubleData m_absFrameLocVelocityBottom;
+
 	double m_linkMass;
 	int m_parentIndex;
 	int m_jointType;
@@ -659,21 +783,33 @@ struct btMultiBodyLinkDoubleData
 	double m_jointPos[7];
 	double m_jointVel[6];
 	double m_jointTorque[6];
+
+	double m_jointDamping;
+	double m_jointFriction;
+	double m_jointLowerLimit;
+	double m_jointUpperLimit;
+	double m_jointMaxForce;
+	double m_jointMaxVelocity;
+
+	char *m_linkName;
+	char *m_jointName;
+	btCollisionObjectDoubleData *m_linkCollider;
+	char *m_paddingPtr;
 };
 
 struct btMultiBodyLinkFloatData
 {
 	btQuaternionFloatData m_zeroRotParentToThis;
-	btVector3FloatData m_parentComToThisComOffset;
+	btVector3FloatData m_parentComToThisPivotOffset;
 	btVector3FloatData m_thisPivotToThisComOffset;
 	btVector3FloatData m_jointAxisTop[6];
 	btVector3FloatData m_jointAxisBottom[6];
-
-	char *m_linkName;
-	char *m_jointName;
-	btCollisionObjectFloatData *m_linkCollider;
-
 	btVector3FloatData m_linkInertia;  // inertia of the base (in local frame; diagonal)
+	btVector3FloatData m_absFrameTotVelocityTop;
+	btVector3FloatData m_absFrameTotVelocityBottom;
+	btVector3FloatData m_absFrameLocVelocityTop;
+	btVector3FloatData m_absFrameLocVelocityBottom;
+
 	int m_dofCount;
 	float m_linkMass;
 	int m_parentIndex;
@@ -683,35 +819,51 @@ struct btMultiBodyLinkFloatData
 	float m_jointVel[6];
 	float m_jointTorque[6];
 	int m_posVarCount;
+	float m_jointDamping;
+	float m_jointFriction;
+	float m_jointLowerLimit;
+	float m_jointUpperLimit;
+	float m_jointMaxForce;
+	float m_jointMaxVelocity;
+
+	char *m_linkName;
+	char *m_jointName;
+	btCollisionObjectFloatData *m_linkCollider;
+	char *m_paddingPtr;
 };
 
 ///do not change those serialization structures, it requires an updated sBulletDNAstr/sBulletDNAstr64
 struct btMultiBodyDoubleData
 {
+	btVector3DoubleData m_baseWorldPosition;
+	btQuaternionDoubleData m_baseWorldOrientation;
+	btVector3DoubleData m_baseLinearVelocity;
+	btVector3DoubleData m_baseAngularVelocity;
+	btVector3DoubleData m_baseInertia;  // inertia of the base (in local frame; diagonal)
+	double m_baseMass;
+	int m_numLinks;
+	char m_padding[4];
+
 	char *m_baseName;
 	btMultiBodyLinkDoubleData *m_links;
 	btCollisionObjectDoubleData *m_baseCollider;
-
-	btTransformDoubleData m_baseWorldTransform;
-	btVector3DoubleData m_baseInertia;  // inertia of the base (in local frame; diagonal)
-
-	int m_numLinks;
-	double m_baseMass;
-
-	char m_padding[4];
 };
 
 ///do not change those serialization structures, it requires an updated sBulletDNAstr/sBulletDNAstr64
 struct btMultiBodyFloatData
 {
+	btVector3FloatData m_baseWorldPosition;
+	btQuaternionFloatData m_baseWorldOrientation;
+	btVector3FloatData m_baseLinearVelocity;
+	btVector3FloatData m_baseAngularVelocity;
+
+	btVector3FloatData m_baseInertia;  // inertia of the base (in local frame; diagonal)
+	float m_baseMass;
+	int m_numLinks;
+
 	char *m_baseName;
 	btMultiBodyLinkFloatData *m_links;
 	btCollisionObjectFloatData *m_baseCollider;
-	btTransformFloatData m_baseWorldTransform;
-	btVector3FloatData m_baseInertia;  // inertia of the base (in local frame; diagonal)
-
-	float m_baseMass;
-	int m_numLinks;
 };
 
 #endif

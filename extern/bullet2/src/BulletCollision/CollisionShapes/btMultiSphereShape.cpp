@@ -13,9 +13,9 @@ subject to the following restrictions:
 3. This notice may not be removed or altered from any source distribution.
 */
 
-//#if defined (_WIN32) || defined (__i386__)
-//#define BT_USE_SSE_IN_API
-//#endif
+#if defined(_WIN32) || defined(__i386__)
+#define BT_USE_SSE_IN_API
+#endif
 
 #include "btMultiSphereShape.h"
 #include "BulletCollision/CollisionShapes/btCollisionMargin.h"
@@ -73,7 +73,7 @@ btVector3 btMultiSphereShape::localGetSupportingVertexWithoutMargin(const btVect
 		int inner_count = MIN(numSpheres - k, 128);
 		for (long i = 0; i < inner_count; i++)
 		{
-			temp[i] = (*pos) + vec * m_localScaling * (*rad) - vec * getMargin();
+			temp[i] = (*pos) * m_localScaling + vec * m_localScaling * (*rad) - vec * getMargin();
 			pos++;
 			rad++;
 		}
@@ -109,7 +109,7 @@ void btMultiSphereShape::batchedUnitVectorGetSupportingVertexWithoutMargin(const
 			int inner_count = MIN(numSpheres - k, 128);
 			for (long i = 0; i < inner_count; i++)
 			{
-				temp[i] = (*pos) + vec * m_localScaling * (*rad) - vec * getMargin();
+				temp[i] = (*pos) * m_localScaling + vec * m_localScaling * (*rad) - vec * getMargin();
 				pos++;
 				rad++;
 			}
@@ -161,6 +161,9 @@ const char* btMultiSphereShape::serialize(void* dataBuffer, btSerializer* serial
 		}
 		serializer->finalizeChunk(chunk, "btPositionAndRadius", BT_ARRAY_CODE, (void*)&m_localPositionArray[0]);
 	}
+
+	// Fill padding with zeros to appease msan.
+	memset(shapeData->m_padding, 0, sizeof(shapeData->m_padding));
 
 	return "btMultiSphereShapeData";
 }
