@@ -1067,6 +1067,19 @@ void BKE_rigidbody_validate_sim_world(Scene *scene, RigidBodyWorld *rbw, bool re
   /* create new sim world */
   if (rebuild || rbw->shared->physics_world == NULL) {
     if (rbw->shared->physics_world) {
+      /* Unlink physics object from world before deleting the world */
+      if (rbw->group) {
+        FOREACH_COLLECTION_OBJECT_RECURSIVE_BEGIN (rbw->group, object) {
+          RigidBodyOb *rbo = object->rigidbody_object;
+          /* sanity check */
+          if (rbo && rbo->shared->physics_object) {
+            RB_dworld_remove_body(rbw->shared->physics_world, rbo->shared->physics_object);
+            RB_body_delete(rbo->shared->physics_object);
+            rbo->shared->physics_object = NULL;
+          }
+        }
+        FOREACH_COLLECTION_OBJECT_RECURSIVE_END;
+      }
       RB_dworld_delete(rbw->shared->physics_world);
     }
     rbw->shared->physics_world = RB_dworld_new(scene->physics_settings.gravity);

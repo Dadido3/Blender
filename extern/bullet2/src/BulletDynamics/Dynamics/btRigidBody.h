@@ -540,6 +540,8 @@ public:
 		return (getBroadphaseProxy() != 0);
 	}
 
+	virtual bool checkCollideWithOverride(const  btCollisionObject* co) const;
+
 	void addConstraintRef(btTypedConstraint* c);
 	void removeConstraintRef(btTypedConstraint* c);
 

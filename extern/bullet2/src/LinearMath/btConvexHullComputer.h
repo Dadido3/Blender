@@ -65,6 +65,7 @@ public:
 
 	// Vertices of the output hull
 	btAlignedObjectArray<btVector3> vertices;
+	btAlignedObjectArray<int> original_vertex_index;
 
 	// Edges of the output hull
 	btAlignedObjectArray<Edge> edges;

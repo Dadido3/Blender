@@ -14,6 +14,9 @@ subject to the following restrictions:
 
 #ifndef BT_SCALAR_H
 #define BT_SCALAR_H
+#if defined(_MSC_VER) && defined(__clang__) /* clang supplies it's own overloads already */
+#define BT_NO_SIMD_OPERATOR_OVERLOADS
+#endif
 
 #ifdef BT_MANAGED_CODE
 //Aligned data types not supported in managed code
@@ -142,7 +145,7 @@ inline int btIsDoublePrecision()
 	#endif //__MINGW32__
 
 	#ifdef BT_DEBUG
-		#ifdef _MSC_VER
+		#if defined(_MSC_VER) && !defined(__clang__)
 			#include <stdio.h>
 			#define btAssert(x) { if(!(x)){printf("Assert " __FILE__ ":%u (%s)\n", __LINE__, #x);__debugbreak();	}}
 		#else//_MSC_VER
