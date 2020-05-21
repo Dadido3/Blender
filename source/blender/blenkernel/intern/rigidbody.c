@@ -556,7 +556,6 @@ static rbCollisionShape *rigidbody_validate_sim_shape_helper(RigidBodyWorld *rbw
       float loc[3], rot[4];
       float mat[4][4];
       /* Add children to the compound shape */
-      // TODO: Don't iterate through all physics objects to get children
       FOREACH_COLLECTION_OBJECT_RECURSIVE_BEGIN (rbw->group, childObject) {
         if (childObject->parent == ob) {
           childShape = rigidbody_validate_sim_shape_helper(rbw, childObject);
