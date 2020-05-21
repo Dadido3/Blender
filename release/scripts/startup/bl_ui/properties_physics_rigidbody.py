@@ -23,22 +23,10 @@ from bpy.types import (
 )
 
 
-def rigid_body_warning(layout):
+def rigid_body_warning(layout, text):
     row = layout.row(align=True)
     row.alignment = 'RIGHT'
-    row.label(text="Object does not have a Rigid Body", icon='ERROR')
-
-
-def rigid_body_parent_warning(layout):
-    row = layout.row(align=True)
-    row.alignment = 'RIGHT'
-    row.label(text="Rigid Body can't be child of a non compound Rigid Body", icon='ERROR')
-
-
-def rigid_body_no_child_warning(layout):
-    row = layout.row(align=True)
-    row.alignment = 'RIGHT'
-    row.label(text="Object does not have child rigid bodies", icon='ERROR')
+    row.label(text=text, icon='ERROR')
 
 
 class PHYSICS_PT_rigidbody_panel:
@@ -65,11 +53,11 @@ class PHYSICS_PT_rigid_body(PHYSICS_PT_rigidbody_panel, Panel):
         rbo = ob.rigid_body
 
         if parent is not None and parent.rigid_body is not None and not parent.rigid_body.collision_shape == 'COMPOUND':
-            rigid_body_parent_warning(layout)
+            rigid_body_warning(layout, "Rigid Body can't be child of a non compound Rigid Body")
             return
 
         if rbo is None:
-            rigid_body_warning(layout)
+            rigid_body_warning(layout, "Object does not have a Rigid Body")
             return
 
         if parent is None or parent.rigid_body is None:
@@ -96,7 +84,7 @@ class PHYSICS_PT_rigid_body_settings(PHYSICS_PT_rigidbody_panel, Panel):
         rbo = ob.rigid_body
 
         if rbo is None:
-            rigid_body_warning(layout)
+            rigid_body_warning(layout, "Object does not have a Rigid Body")
             return
 
         flow = layout.grid_flow(row_major=True, columns=0, even_columns=True, even_rows=False, align=True)
@@ -126,19 +114,23 @@ class PHYSICS_PT_rigid_body_collisions(PHYSICS_PT_rigidbody_panel, Panel):
         layout = self.layout
 
         ob = context.object
+        parent = ob.parent
         rbo = ob.rigid_body
         layout.use_property_split = True
 
         layout.prop(rbo, "collision_shape", text="Shape")
 
         if rbo.collision_shape == 'COMPOUND':
-            found = False
-            for child in ob.children:
-                if child.rigid_body is not None:
-                    found = True
-                    break
-            if not found:
-                rigid_body_no_child_warning(layout)
+            if parent is not None and parent.rigid_body is not None and parent.rigid_body.collision_shape == 'COMPOUND':
+                rigid_body_warning(layout, "Sub compound shapes are not allowed")
+            else:
+                found = False
+                for child in ob.children:
+                    if child.rigid_body is not None:
+                        found = True
+                        break
+                if not found:
+                    rigid_body_warning(layout, "There are no child rigid bodies")
 
         if rbo.collision_shape in {'MESH', 'CONVEX_HULL'}:
             layout.prop(rbo, "mesh_source", text="Source")
