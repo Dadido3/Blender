@@ -52,12 +52,17 @@ class PHYSICS_PT_rigid_body(PHYSICS_PT_rigidbody_panel, Panel):
         parent = ob.parent
         rbo = ob.rigid_body
 
-        if parent is not None and parent.rigid_body is not None and not parent.rigid_body.collision_shape == 'COMPOUND':
-            rigid_body_warning(layout, "Rigid Body can't be child of a non compound Rigid Body")
-            return
-
         if rbo is None:
             rigid_body_warning(layout, "Object does not have a Rigid Body")
+            return
+
+        if parent is not None and parent.rigid_body is not None:
+            if parent.rigid_body.collision_shape == 'COMPOUND':
+                row = layout.row(align=True)
+                row.alignment = 'RIGHT'
+                row.label(text="This object is part of a compound shape", icon='INFO')
+            else:
+                rigid_body_warning(layout, "Rigid Body can't be child of a non compound Rigid Body")
             return
 
         if parent is None or parent.rigid_body is None:
